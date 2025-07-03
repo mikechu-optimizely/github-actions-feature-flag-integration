@@ -10,7 +10,6 @@ export function loadEnvironmentVariables(): {
   OPTIMIZELY_API_TOKEN: string;
   OPTIMIZELY_PROJECT_ID: string;
   GITHUB_TOKEN: string;
-  ENVIRONMENT: string;
   OPERATION: string;
   DRY_RUN: boolean;
 } {
@@ -18,7 +17,6 @@ export function loadEnvironmentVariables(): {
     "OPTIMIZELY_API_TOKEN",
     "OPTIMIZELY_PROJECT_ID",
     "GITHUB_TOKEN",
-    "ENVIRONMENT",
     "OPERATION",
     "DRY_RUN",
   ];
@@ -39,7 +37,6 @@ export function loadEnvironmentVariables(): {
     OPTIMIZELY_API_TOKEN: env["OPTIMIZELY_API_TOKEN"]!,
     OPTIMIZELY_PROJECT_ID: env["OPTIMIZELY_PROJECT_ID"]!,
     GITHUB_TOKEN: env["GITHUB_TOKEN"]!,
-    ENVIRONMENT: env["ENVIRONMENT"]!,
     OPERATION: env["OPERATION"]!,
     DRY_RUN: env["DRY_RUN"] === "true",
   };

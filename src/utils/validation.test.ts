@@ -41,44 +41,28 @@ Deno.test("validateApiPath: throws if not a string", () => {
 
 Deno.test("validateInputs: accepts valid inputs", () => {
   validateInputs({
-    environment: "production",
-    operation: "sync",
+    operation: "cleanup",
     optimizelyApiToken: "valid_token_123456",
     optimizelyProjectId: "12345",
   });
 });
 
-Deno.test("validateInputs: throws on invalid environment", () => {
-  assertThrows(
-    () => validateInputs({
-      environment: "",
-      operation: "sync",
-      optimizelyApiToken: "valid_token_123456",
-      optimizelyProjectId: "12345",
-    }),
-    Error,
-    "Environment must be a non-empty string"
-  );
-});
-
 Deno.test("validateInputs: throws on invalid operation", () => {
   assertThrows(
     () => validateInputs({
-      environment: "production",
       operation: "invalid",
       optimizelyApiToken: "valid_token_123456",
       optimizelyProjectId: "12345",
     }),
     Error,
-    "Operation must be one of: sync, cleanup, audit"
+    "Operation must be one of: cleanup, audit"
   );
 });
 
 Deno.test("validateInputs: throws on missing API token", () => {
   assertThrows(
     () => validateInputs({
-      environment: "production",
-      operation: "sync",
+      operation: "cleanup",
       optimizelyProjectId: "12345",
     }),
     Error,

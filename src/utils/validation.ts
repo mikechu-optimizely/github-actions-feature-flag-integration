@@ -19,18 +19,12 @@ export function validateApiPath(path: string): void {
  * @throws Error if any validation fails
  */
 export function validateInputs(inputs: {
-  environment: string;
   operation: string;
   optimizelyApiToken?: string;
   optimizelyProjectId?: string;
 }): void {
-  // Validate environment
-  if (!inputs.environment || typeof inputs.environment !== "string") {
-    throw new Error("Environment must be a non-empty string");
-  }
-
   // Validate operation
-  const validOperations = ["sync", "cleanup", "audit"];
+  const validOperations = ["cleanup", "audit"];
   if (!validOperations.includes(inputs.operation)) {
     throw new Error(`Operation must be one of: ${validOperations.join(", ")}`);
   }

@@ -14,8 +14,7 @@ const envVars = {
   OPTIMIZELY_API_TOKEN: "test-token",
   OPTIMIZELY_PROJECT_ID: "pid",
   GITHUB_TOKEN: "gh-token",
-  ENVIRONMENT: "test",
-  OPERATION: "sync",
+  OPERATION: "cleanup",
   DRY_RUN: "true",
 };
 

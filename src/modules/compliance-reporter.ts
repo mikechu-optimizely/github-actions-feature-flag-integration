@@ -64,7 +64,7 @@ export class ComplianceReporter {
     } = {
       executionId: crypto.randomUUID(),
       environment: "unknown",
-      operation: "sync",
+      operation: "cleanup",
       dryRun: true,
     },
   ): ComplianceReport {
