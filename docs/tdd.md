@@ -40,16 +40,16 @@ flowchart TB
     end
     
     subgraph External["External Systems"]
-        OptlyAPI["Optimizely Feature Experimentation<br/>REST API"]
+        OptimizelyAPI["Optimizely Feature Experimentation<br/>REST API"]
     end
-    
-    Client --> OptlyAPI
-    
+
+    Client --> OptimizelyAPI
+
     style GHA fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
     style Layer1 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
     style Layer2 fill:#e8f5e8,stroke:#388e3c,stroke-width:1px
     style External fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style OptlyAPI fill:#ffebee,stroke:#d32f2f,stroke-width:1px
+    style OptimizelyAPI fill:#ffebee,stroke:#d32f2f,stroke-width:1px
 ```
 
 ### Component Overview
