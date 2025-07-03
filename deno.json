@@ -1,0 +1,8 @@
+{
+  "importMap": "import_map.json",
+  "tasks": {
+    "lint": "deno lint src/",
+    "fmt": "deno fmt src/",
+    "test": "deno test --allow-all src/"
+  }
+}

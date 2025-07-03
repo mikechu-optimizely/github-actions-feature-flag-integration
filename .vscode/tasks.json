@@ -1,0 +1,30 @@
+{
+  // VS Code tasks for Deno 2.x development
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Setup Deno Runtime",
+      "type": "shell",
+      "command": "deno --version",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint Source Files",
+      "type": "shell",
+      "command": "deno lint src/",
+      "problemMatcher": []
+    },
+    {
+      "label": "Format Source Files",
+      "type": "shell",
+      "command": "deno fmt src/",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "deno test --allow-all src/",
+      "problemMatcher": []
+    }
+  ]
+}
