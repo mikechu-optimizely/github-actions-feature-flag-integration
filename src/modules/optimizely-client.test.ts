@@ -79,8 +79,10 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
     baseUrl: "http://localhost:8080/mock-api",
   });
   // Mock the request method for isolation
-  type ItemsResult = Result<{ items: OptimizelyFlag[] }, Error>;
-  client.request = (_path: string, _init?: RequestInit): Promise<ItemsResult> =>
+  client.request = (<T = unknown>(
+    _path: string,
+    _init?: RequestInit,
+  ): Promise<Result<T, Error>> =>
     Promise.resolve({
       data: {
         items: [
@@ -97,9 +99,9 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
             archived: false,
           },
         ],
-      },
+      } as T,
       error: null,
-    });
+    })) as typeof client.request;
   const result = await client.getAllFeatureFlags();
   if (!result.data || result.data.length !== 2) {
     throw new Error(`Expected 2 flags, got ${JSON.stringify(result.data)}`);
@@ -121,11 +123,14 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
 
 Deno.test("OptimizelyApiClient.getAllFeatureFlags returns error on failure", async () => {
   const client = new OptimizelyApiClient();
-  client.request = (
+  client.request = (<T = unknown>(
     _path: string,
     _init?: RequestInit,
-  ): Promise<Result<OptimizelyFlag[], Error>> =>
-    Promise.resolve({ data: null, error: new Error("API failure") });
+  ): Promise<Result<T, Error>> =>
+    Promise.resolve({
+      data: null,
+      error: new Error("API failure"),
+    })) as typeof client.request;
   const result = await client.getAllFeatureFlags();
   if (result.data !== null && result.data?.length !== 0) {
     throw new Error(
