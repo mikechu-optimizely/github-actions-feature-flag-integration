@@ -2,20 +2,19 @@
 
 ## Executive Summary
 
-This document outlines the requirements for an automated feature flag synchronization solution that ensures consistency between code deployments and Optimizely Feature Experimentation environments. The solution addresses two critical scenarios: automatic cleanup of unused feature flags and promotion of feature flags across environments during the software development lifecycle.
+This document outlines the requirements for an automated feature flag synchronization solution that ensures consistency between code deployments and Optimizely Feature Experimentation environments. The solution addresses the critical scenario of automatic cleanup of unused feature flags to prevent feature flag debt and maintain clean configurations.
 
 ## Problem Statement
 
 ### Current Challenges
 
 1. **Feature Flag Debt**: Developers remove feature flags from code but forget to archive corresponding flags in Optimizely, leading to orphaned flags, configuration drift, and larger Optimizely JSON datafiles
-2. **Environment Synchronization**: Feature flags referenced in code are not automatically created or synchronized across Optimizely environments during promotion workflows
-3. **Manual Process Overhead**: Current manual processes for flag management are error-prone and time-consuming
+2. **Manual Process Overhead**: Current manual processes for flag management are error-prone and time-consuming
 
 ### Business Impact
 
-- **Risk Mitigation**: Reduce deployment risks caused by feature flag inconsistencies
-- **Operational Efficiency**: Eliminate manual feature flag management overhead
+- **Risk Mitigation**: Reduce configuration drift and maintenance overhead caused by orphaned feature flags
+- **Operational Efficiency**: Eliminate manual feature flag cleanup overhead
 - **Developer Experience**: Streamline development workflows and reduce cognitive load
 - **Governance**: Ensure proper feature flag lifecycle management and compliance
 
@@ -24,13 +23,12 @@ This document outlines the requirements for an automated feature flag synchroniz
 ### Core Objectives
 
 1. **Automated Cleanup**: Automatically detect and archive feature flags that have been removed from code
-2. **Environment Promotion**: Seamlessly synchronize feature flags across environments during code promotion
-3. **Consistency Assurance**: Maintain alignment between code state and Optimizely feature flag configurations
-4. **Operational Transparency**: Provide visibility into feature flag synchronization activities
+2. **Consistency Assurance**: Maintain alignment between code state and Optimizely feature flag configurations
+3. **Operational Transparency**: Provide visibility into feature flag synchronization activities
 
 ## Functional Requirements
 
-### Scenario 1: Feature Flag Removal Detection and Cleanup
+### Feature Flag Removal Detection and Cleanup
 
 #### FR1.1 Code Analysis
 - **Requirement**: Solution shall scan code repositories to identify feature flag references
@@ -51,37 +49,12 @@ This document outlines the requirements for an automated feature flag synchroniz
   - Disable flags that are being removed in code
   - Maintain audit trail of all flag modifications
 
-### Scenario 2: Environment Promotion Synchronization
-
-#### FR2.1 Environment Mapping
-- **Requirement**: Solution shall maintain mapping between code deployment environments and Optimizely environments
-- **Acceptance Criteria**:
-  - Support multiple environment hierarchies (dev → qa → staging → production)
-  - Allow flexible environment mapping configurations
-  - Validate environment relationships and dependencies
-
-#### FR2.2 Feature Flag Discovery
-- **Requirement**: Solution shall identify new feature flags introduced in code
-- **Acceptance Criteria**:
-  - Detect new feature flag references during code deployment
-  - Differentiate between new flags and existing flag from lower environments
-  - Alert developers of new flags that need to be created in Optimizely if not present in lower environments
-  - Support multiple feature flag naming conventions and patterns
-
-#### FR2.3 Cross-Environment Synchronization
-- **Requirement**: Solution shall replicate feature flags across Optimizely environments
-- **Acceptance Criteria**:
-  - Clone new flags in target environments with consistent naming
-  - Preserve flag configurations where appropriate
-  - Apply environment-specific default settings
-  - Maintain flag metadata and descriptions
-
 ## Non-Functional Requirements
 
 ### Performance Requirements
 
 #### NFR1 Scalability
-- **Requirement**: Solution shall handle large codebases and multiple environments efficiently
+- **Requirement**: Solution shall handle large codebases efficiently
 - **Metrics**: Process repositories with 100k+ lines of code within 5 minutes
 
 ### Security Requirements
@@ -111,21 +84,13 @@ This document outlines the requirements for an automated feature flag synchroniz
 
 ## User Stories
 
-### As a DevOps Engineer
-- **Story**: I want feature flags to be automatically synchronized during deployments so that I don't have to manually manage flag states across environments
-- **Acceptance Criteria**: Feature flags are automatically duplicated in target environments during deployment pipeline execution
-
 ### As a Developer
 - **Story**: I want orphaned feature flags to be automatically cleaned up when I remove them from code so that I don't have to remember to archive them manually
 - **Acceptance Criteria**: Feature flags are automatically archived in Optimizely when they are no longer referenced in the codebase
 
 ### As a Product Manager
-- **Story**: I want visibility into feature flag synchronization activities so that I can understand the impact of flag changes across environments
+- **Story**: I want visibility into feature flag synchronization activities so that I can understand the impact of flag changes
 - **Acceptance Criteria**: CI output shows flag synchronization status, history, and any issues requiring attention
-
-### As a Platform Engineer
-- **Story**: I want to configure synchronization rules and policies so that the system operates according to our organizational standards
-- **Acceptance Criteria**: Administrative interface allows configuration of sync rules, approval workflows, and environment mappings
 
 ## Assumptions and Constraints
 
@@ -146,7 +111,7 @@ This document outlines the requirements for an automated feature flag synchroniz
 ### Dependencies
 - Optimizely Feature Experimentation API availability and functionality
 - Optimizely API service account token for authentication against a configured service account user
-- Access to code repositories and CI/CD pipeline systems
+- Access to code repositories
 - Organizational approval for automated feature flag management
 - Development team adoption and documentation
 
@@ -175,7 +140,7 @@ This document outlines the requirements for an automated feature flag synchroniz
 
 ## Conclusion
 
-This solution will meaningfully improve the reliability and efficiency of feature flag management by automating synchronization between code and Optimizely environments. The implementation will reduce operational overhead, minimize deployment risks, and enhance developer productivity while maintaining the flexibility and control required for enterprise-grade feature flag management.
+This solution will meaningfully improve the reliability and efficiency of feature flag management by automating cleanup of unused feature flags in Optimizely environments. The implementation will reduce operational overhead, minimize configuration drift, and enhance developer productivity while maintaining the flexibility and control required for enterprise-grade feature flag management.
 
 The success of this initiative depends on careful implementation, thorough testing, and strong collaboration between development, operations, and product teams to ensure the solution meets both technical requirements and business objectives.
 

@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This Technical Design Document outlines the implementation of a GitHub Actions-based feature flag synchronization solution using Deno 2 and TypeScript. The solution addresses automated cleanup of unused feature flags and promotion of feature flags across Optimizely environments during software development lifecycle phases.
+This Technical Design Document outlines the implementation of a GitHub Actions-based feature flag synchronization solution using Deno 2 and TypeScript. The solution addresses automated cleanup of unused feature flags to prevent feature flag debt and maintain clean Optimizely configurations.
 
 ### Key Technical Decisions
 
@@ -26,17 +26,14 @@ flowchart TB
         end
         
         subgraph Layer2["Support Layer"]
-            Environment["Environment<br/>Mapping<br/>Module"]
             Client["Optimizely<br/>API Client<br/>Module"]
             Audit["Audit and<br/>Reporting<br/>Module"]
         end
         
         Setup --> Analysis
         Analysis --> Sync
-        Sync --> Environment
         Sync --> Client
         Sync --> Audit
-        Environment --> Client
         Client --> Audit
     end
     
@@ -58,9 +55,8 @@ flowchart TB
 1. **GitHub Actions Workflow**: Orchestrates execution across different trigger events
 2. **Code Analysis Module**: Scans repository for feature flag references
 3. **Flag Sync Core Module**: Manages feature flag lifecycle operations
-4. **Environment Mapping Module**: Handles environment-specific configurations
-5. **Optimizely API Client**: Manages all API interactions with rate limiting and retries
-6. **Audit and Reporting Module**: Provides comprehensive logging and reporting
+4. **Optimizely API Client**: Manages all API interactions with rate limiting and retries
+5. **Audit and Reporting Module**: Provides comprehensive logging and reporting
 
 ## Project Structure and Dependencies
 
@@ -73,7 +69,6 @@ src/
 ├── modules/
 │   ├── code-analysis.ts      # Repository scanning and flag extraction
 │   ├── flag-sync-core.ts     # Core synchronization logic
-│   ├── environment-mapping.ts # Environment configuration management
 │   ├── optimizely-client.ts  # Optimizely API client with rate limiting
 │   ├── audit-reporter.ts     # Audit logging and reporting
 │   └── security.ts           # Security utilities and validation
@@ -127,24 +122,11 @@ src/
 
 **Key Functions**:
 - `createSyncPlan()`: Analyze differences and create execution plan
-- `syncFlagsToEnvironment()`: Synchronize flags between environments
 - `archiveUnusedFlags()`: Archive flags no longer referenced in code
-- `createMissingFlags()`: Create flags found in code but missing in Optimizely
-- `validateFlagConsistency()`: Ensure consistency across environments
+- `validateFlagConsistency()`: Ensure consistency between code and Optimizely
 - `executeSyncPlan()`: Execute the planned synchronization operations
 
-#### 3. Environment Mapping Module (`src/modules/environment-mapping.ts`)
-
-**Purpose**: Handle environment-specific configurations and mappings
-
-**Key Functions**:
-- `loadEnvironmentConfig()`: Load configuration from file system
-- `mapDeploymentToOptimizely()`: Map deployment environments to Optimizely environments
-- `getPromotionChain()`: Retrieve environment promotion hierarchy
-- `validateEnvironmentMapping()`: Validate configuration consistency
-- `getEnvironmentSettings()`: Get environment-specific settings
-
-#### 4. Optimizely API Client (`src/modules/optimizely-client.ts`)
+#### 3. Optimizely API Client (`src/modules/optimizely-client.ts`)
 
 **Purpose**: Manage all interactions with Optimizely APIs with enterprise-grade reliability
 
@@ -181,23 +163,18 @@ name: Feature Flag Synchronization
 
 on:
   push:
-    branches: [main, develop, staging]
+    branches: [main]
   pull_request:
-    branches: [main, develop, staging]
+    branches: [main]
   schedule:
     - cron: '0 6 * * 1'  # Weekly cleanup on Mondays
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        type: choice
-        options: ['dev', 'staging', 'production']
       operation:
         description: 'Operation type'
         required: true
         type: choice
-        options: ['sync', 'cleanup', 'audit']
+        options: ['cleanup', 'audit']
       dry_run:
         description: 'Dry run mode'
         required: false
@@ -228,14 +205,13 @@ jobs:
       - name: Validate Configuration
         run: deno run --allow-read src/validate-config.ts
       
-      - name: Execute Feature Flag Sync
+      - name: Execute Feature Flag Cleanup
         run: deno run --allow-all src/main.ts
         env:
           OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
           OPTIMIZELY_PROJECT_ID: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ENVIRONMENT: ${{ github.event.inputs.environment || 'auto' }}
-          OPERATION: ${{ github.event.inputs.operation || 'sync' }}
+          OPERATION: ${{ github.event.inputs.operation || 'cleanup' }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
       
       - name: Upload Sync Report
@@ -266,20 +242,20 @@ jobs:
 
 ### Main Entry Point (`src/main.ts`)
 
-**Purpose**: Orchestrate the entire feature flag synchronization process
+**Purpose**: Orchestrate the entire feature flag cleanup process
 
 **Key Functions**:
 - `main()`: Entry point with error handling and logging
 - `parseCommandLineArgs()`: Parse CLI arguments and environment variables
 - `validateConfiguration()`: Validate configuration files and environment setup
 - `initializeComponents()`: Initialize all required modules and clients
-- `createSyncPlan()`: Generate synchronization plan based on analysis
-- `executeSyncPlan()`: Execute the synchronization operations
+- `createCleanupPlan()`: Generate cleanup plan based on code analysis
+- `executeCleanupPlan()`: Execute the cleanup operations
 - `generateReport()`: Create comprehensive audit and summary reports
 
 ### Configuration Management
 
-Centralized configuration for all aspects of the feature flag synchronization system.
+Centralized configuration for all aspects of the feature flag cleanup system.
 
 ## Security Considerations
 
@@ -332,7 +308,7 @@ Comprehensive metrics tracking for monitoring synchronization performance and op
 2. **Searching**: Use native git commands for efficient file searching
 3. **Dependency Management**: Use Deno's built-in functions instead of external libraries to minimize dependencies and improve performance
 
-## Flag Cleanup and Synchronization Strategy
+## Flag Cleanup Strategy
 
 ```mermaid
 sequenceDiagram
@@ -357,7 +333,7 @@ sequenceDiagram
 
 ### Prioritization: Optimizely-First Approach
 
-To ensure a lean and accurate Optimizely configuration, this solution prioritizes an **Optimizely-first strategy** for feature flag cleanup and synchronization. The primary goal is to identify and archive or remove flags that exist in Optimizely but are no longer referenced in the codebase.
+To ensure a lean and accurate Optimizely configuration, this solution prioritizes an **Optimizely-first strategy** for feature flag cleanup. The primary goal is to identify and archive or remove flags that exist in Optimizely but are no longer referenced in the codebase.
 
 #### Rationale
 - **Directly targets flag debt**: By starting with the list of all flags in Optimizely, the system can systematically check which ones are no longer referenced in the codebase and safely archive or remove them.
