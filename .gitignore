@@ -1,0 +1,43 @@
+# Deno
+.deno
+.deno_modules/
+.deno_cache/
+
+# Node (if any tooling is used)
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Reports and Artifacts
+reports/
+*.report.json
+*.report.md
+
+# Test output
+coverage/
+
+# Environment and config
+.env
+.env.*
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.swp
+*.swo
+
+# Ignore lock files (Deno)
+deno.lock
+
+# Ignore test fixtures
+src/__tests__/fixtures/
