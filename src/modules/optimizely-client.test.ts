@@ -62,10 +62,52 @@ Deno.test("OptimizelyApiClient: failed request returns error", async () => {
 Deno.test("OptimizelyApiClient: invalid path returns error", async () => {
   setEnv();
   const client = new OptimizelyApiClient();
-  const result = await client.request("invalid-path");
-  assert(result.error instanceof Error);
-  assertEquals(result.data, null);
-  assert(String(result.error).includes("API path must be a non-empty string"));
+  let errorCaught = false;
+  try {
+    await client.request("invalid-path");
+  } catch (err) {
+    errorCaught = true;
+    assert(String(err).includes("API path must be a non-empty string"));
+  }
+  if (!errorCaught) {
+    throw new Error("Expected error to be thrown for invalid path");
+  }
+});
+
+Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects on success", async () => {
+  const client = new OptimizelyApiClient({
+    baseUrl: "http://localhost:8080/mock-api",
+  });
+  // Mock the request method for isolation
+  client.request = async (_path: string, _init?: RequestInit) => ({
+    data: { items: [
+      { key: "flag_a", name: "Flag A", url: "/flags/flag_a", archived: false },
+      { key: "flag_b", name: "Flag B", url: "/flags/flag_b", archived: false },
+    ] },
+    error: null,
+  }) as any;
+  const result = await client.getAllFeatureFlags();
+  if (!result.data || result.data.length !== 2) {
+    throw new Error(`Expected 2 flags, got ${JSON.stringify(result.data)}`);
+  }
+  if (result.data[0].key !== "flag_a" || result.data[1].key !== "flag_b") {
+    throw new Error(`Unexpected flag keys: ${result.data.map(f => f.key)}`);
+  }
+  if (typeof result.error !== "undefined" && result.error !== null) {
+    throw new Error(`Expected error to be null, got ${result.error}`);
+  }
+});
+
+Deno.test("OptimizelyApiClient.getAllFeatureFlags returns error on failure", async () => {
+  const client = new OptimizelyApiClient();
+  client.request = async (_path: string, _init?: RequestInit) => ({ data: null, error: new Error("API failure") }) as any;
+  const result = await client.getAllFeatureFlags();
+  if (result.data !== null && result.data?.length !== 0) {
+    throw new Error(`Expected data to be null or empty, got ${JSON.stringify(result.data)}`);
+  }
+  if (!(result.error instanceof Error)) {
+    throw new Error(`Expected error to be instance of Error, got ${result.error}`);
+  }
 });
 
 globalThis.fetch = originalFetch;

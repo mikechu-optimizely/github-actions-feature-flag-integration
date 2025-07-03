@@ -2,7 +2,7 @@ import { loadEnvironmentVariables } from "../config/environment.ts";
 import * as logger from "../utils/logger.ts";
 import * as retry from "../utils/retry.ts";
 import * as validation from "../utils/validation.ts";
-import { Result } from "../utils/try-catch.ts";
+import { Result, tryCatch } from "../utils/try-catch.ts";
 
 /**
  * Options for OptimizelyApiClient
@@ -20,6 +20,19 @@ export interface OptimizelyApiClientOptions {
    * Maximum retry attempts for failed requests
    */
   maxRetries?: number;
+}
+
+/**
+ * Optimizely Feature Flag object (partial, extend as needed)
+ */
+export interface OptimizelyFlag {
+  key: string;
+  name: string;
+  description?: string;
+  url: string;
+  archived: boolean;
+  environments?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 /**
@@ -54,35 +67,41 @@ export class OptimizelyApiClient {
     path: string,
     init: RequestInit = {},
   ): Promise<Result<T, Error>> {
-    try {
-      validation.validateApiPath(path);
-      await this.#rateLimit();
-      const url = `${this.baseUrl}${path}`;
-      const headers = {
-        "Authorization": `Bearer ${this.token}`,
-        "Content-Type": "application/json",
-        ...(init.headers || {}),
-      };
-      const fetchRequest = async () => {
-        const response = await fetch(url, { ...init, headers });
-        if (!response.ok) {
-          const errorBody = await response.text();
-          logger.error(
-            `Optimizely API error: ${response.status} ${response.statusText} - ${errorBody}`,
-          );
-          throw new Error(
-            `Optimizely API error: ${response.status} ${response.statusText}`,
-          );
-        }
-        return await response.json() as T;
-      };
-      return await retry.withExponentialBackoff<T, Error>(
-        fetchRequest,
-        this.maxRetries,
-      );
-    } catch (error) {
-      return { data: null, error: error as Error };
-    }
+    validation.validateApiPath(path);
+    await this.#rateLimit();
+    const url = `${this.baseUrl}${path}`;
+    const headers = {
+      "Authorization": `Bearer ${this.token}`,
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    };
+    const fetchRequest = async () => {
+      const response = await fetch(url, { ...init, headers });
+      if (!response.ok) {
+        const errorBody = await response.text();
+        logger.error(
+          `Optimizely API error: ${response.status} ${response.statusText} - ${errorBody}`,
+        );
+        throw new Error(
+          `Optimizely API error: ${response.status} ${response.statusText}`,
+        );
+      }
+      return await response.json() as T;
+    };
+    return await retry.withExponentialBackoff<T, Error>(fetchRequest, this.maxRetries);
+  }
+
+  /**
+   * Fetches all feature flags for the configured Optimizely project.
+   * @returns Result object with array of OptimizelyFlag or error
+   */
+  async getAllFeatureFlags(): Promise<Result<OptimizelyFlag[], Error>> {
+    const env = loadEnvironmentVariables();
+    const projectId = env.OPTIMIZELY_PROJECT_ID;
+    const path = `/flags/v1/projects/${encodeURIComponent(projectId)}/flags`;
+    const result = await this.request<{ items: OptimizelyFlag[] }>(path);
+    if (result.error) return { data: null, error: result.error };
+    return { data: result.data?.items ?? [], error: null };
   }
 
   async #rateLimit(): Promise<void> {
