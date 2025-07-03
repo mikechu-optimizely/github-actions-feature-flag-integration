@@ -16,7 +16,7 @@
 - [x] Search codebase for each Optimizely flag key (string search, context-aware)
 - [x] Exclude comments, test fixtures, and documentation from search
 - [x] Report or archive flags not found in code (with audit logging)
-- [ ] Generate summary and compliance reports as CI artifacts
+- [x] Generate summary and compliance reports as CI artifacts
 
 ## Phase 4: Code Analysis & Multi-Language Support
 - [x] Develop code analysis module for advanced flag reference extraction

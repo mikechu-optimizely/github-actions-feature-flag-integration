@@ -36,6 +36,3 @@ Thumbs.db
 
 # Ignore lock files (Deno)
 deno.lock
-
-# Ignore test fixtures
-src/__tests__/fixtures/
