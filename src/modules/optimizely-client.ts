@@ -2,7 +2,7 @@ import { loadEnvironmentVariables } from "../config/environment.ts";
 import * as logger from "../utils/logger.ts";
 import * as retry from "../utils/retry.ts";
 import * as validation from "../utils/validation.ts";
-import { Result, tryCatch } from "../utils/try-catch.ts";
+import { Result } from "../utils/try-catch.ts";
 
 /**
  * Options for OptimizelyApiClient

@@ -2,7 +2,6 @@
  * Unit tests for validation utilities.
  */
 import {
-  assertEquals,
   assertThrows,
 } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { validateApiPath } from "./validation.ts";
@@ -29,8 +28,8 @@ Deno.test("validateApiPath: throws if not starting with slash", () => {
 });
 
 Deno.test("validateApiPath: throws if not a string", () => {
-  // @ts-expect-error
+  // @ts-expect-error: Testing non-string input (undefined)
   assertThrows(() => validateApiPath(undefined), Error);
-  // @ts-expect-error
+  // @ts-expect-error: Testing non-string input (number)
   assertThrows(() => validateApiPath(123), Error);
 });
