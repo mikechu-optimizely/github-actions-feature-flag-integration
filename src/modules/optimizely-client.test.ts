@@ -27,14 +27,14 @@ function setEnv() {
 
 Deno.test("OptimizelyApiClient: successful request returns data", async () => {
   setEnv();
-  globalThis.fetch = async () =>
-    Promise.resolve({
-      ok: true,
-      json: async () => ({ foo: "bar" }),
-      status: 200,
-      statusText: "OK",
-      text: async () => "",
-    } as Response);
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response(JSON.stringify({ foo: "bar" }), {
+        status: 200,
+        statusText: "OK",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
   const client = new OptimizelyApiClient();
   const result: Result<{ foo: string }, Error> = await client.request("/test");
   assertEquals(result, { data: { foo: "bar" }, error: null });
@@ -42,14 +42,14 @@ Deno.test("OptimizelyApiClient: successful request returns data", async () => {
 
 Deno.test("OptimizelyApiClient: failed request returns error", async () => {
   setEnv();
-  globalThis.fetch = async () =>
-    Promise.resolve({
-      ok: false,
-      status: 401,
-      statusText: "Unauthorized",
-      text: async () => "unauthorized",
-      json: async () => ({}),
-    } as Response);
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response("unauthorized", {
+        status: 401,
+        statusText: "Unauthorized",
+        headers: { "Content-Type": "text/plain" },
+      }),
+    );
   const client = new OptimizelyApiClient();
   const result = await client.request("/fail");
   assert(result.error instanceof Error);
