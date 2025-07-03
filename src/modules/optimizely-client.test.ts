@@ -1,7 +1,10 @@
 /**
  * Unit tests for OptimizelyApiClient.
  */
-import { assertEquals, assert } from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import {
+  assert,
+  assertEquals,
+} from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { OptimizelyApiClient } from "./optimizely-client.ts";
 import { Result } from "../utils/try-catch.ts";
 
@@ -51,7 +54,9 @@ Deno.test("OptimizelyApiClient: failed request returns error", async () => {
   const result = await client.request("/fail");
   assert(result.error instanceof Error);
   assertEquals(result.data, null);
-  assert(String(result.error).includes("Optimizely API error: 401 Unauthorized"));
+  assert(
+    String(result.error).includes("Optimizely API error: 401 Unauthorized"),
+  );
 });
 
 Deno.test("OptimizelyApiClient: invalid path returns error", async () => {

@@ -1,4 +1,4 @@
-import { tryCatch, Result } from "./try-catch.ts";
+import { Result, tryCatch } from "./try-catch.ts";
 
 /**
  * Retries a function with exponential backoff on failure, returning a Result object.
@@ -24,12 +24,13 @@ export async function withExponentialBackoff<T, E = Error>(
       break;
     }
     const delay = baseDelay * 2 ** attempt + Math.random() * 100;
-    
+
     await new Promise((resolve) => setTimeout(resolve, delay));
-    
+
     attempt++;
   }
   return {
-    data: null, error: lastError as E
+    data: null,
+    error: lastError as E,
   };
 }
