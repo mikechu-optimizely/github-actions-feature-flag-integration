@@ -13,16 +13,16 @@
 - [x] Add security utilities for token validation and data sanitization
 
 ## Phase 3: Codebase Search & Flag Usage Analysis
-- [ ] Search codebase for each Optimizely flag key (string search, context-aware)
-- [ ] Exclude comments, test fixtures, and documentation from search
-- [ ] Report or archive flags not found in code (with audit logging)
+- [x] Search codebase for each Optimizely flag key (string search, context-aware)
+- [x] Exclude comments, test fixtures, and documentation from search
+- [x] Report or archive flags not found in code (with audit logging)
 - [ ] Generate summary and compliance reports as CI artifacts
 
 ## Phase 4: Code Analysis & Multi-Language Support
-- [ ] Develop code analysis module for advanced flag reference extraction
-- [ ] Support multiple languages (JS, TS, Python, Java, C#, Go, PHP)
-- [ ] Implement extraction and validation of feature flag references (pattern-based)
-- [ ] Generate flag usage and delta reports
+- [x] Develop code analysis module for advanced flag reference extraction
+- [x] Support multiple languages (JS, TS, Python, Java, C#, Go, PHP)
+- [x] Implement extraction and validation of feature flag references (pattern-based)
+- [x] Generate flag usage and delta reports
 
 ## Phase 5: Flag Synchronization Core
 - [ ] Build flag sync core module for lifecycle operations

@@ -39,7 +39,7 @@ export function sanitizeData<T extends Record<string, unknown>>(
   const copy = { ...obj };
   for (const field of fields) {
     if (field in copy) {
-      copy[field] = "[REDACTED]";
+      (copy as Record<string, unknown>)[field] = "[REDACTED]";
     }
   }
   return copy;
