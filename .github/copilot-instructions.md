@@ -63,6 +63,8 @@
 - Prefer functional programming patterns for clarity and maintainability when appropriate
 - Structure for testability with dependency injection and separation of concerns
 - Address edge cases and failure modes explicitly
+- Single-line conditional statements should be IIFE only if it improves readability
+- Multi-line conditional statements should use braces `{}` for clarity for example in TypeScript, JavaScript, and C#
 - Use idiomatic solutions for the target language
 - Implement proper error boundaries and fallback mechanisms in UI components
 - Specify language version, framework, and style preferences when requesting code generation
