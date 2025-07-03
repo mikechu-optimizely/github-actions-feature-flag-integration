@@ -5,38 +5,43 @@
 - [x] Establish project structure as per TDD
 - [x] Configure GitHub Actions workflow for CI/CD
 - [x] Implement configuration management and environment variable loading
-- [x] Create Optimizely API client with authentication, rate limiting, and error handling
 
-## Phase 2: Code Analysis & Reporting
-- [ ] Develop code analysis module to scan for feature flag references
+## Phase 2: Optimizely API Integration & Flag Discovery
+- [x] Create Optimizely API client with authentication, rate limiting, and error handling
+- [ ] Fetch all feature flag keys from Optimizely (API integration)
+- [ ] Implement audit logging and reporting module
+- [ ] Add security utilities for token validation and data sanitization
+
+## Phase 3: Codebase Search & Flag Usage Analysis
+- [ ] Search codebase for each Optimizely flag key (string search, context-aware)
+- [ ] Exclude comments, test fixtures, and documentation from search
+- [ ] Report or archive flags not found in code (with audit logging)
+- [ ] Generate summary and compliance reports as CI artifacts
+
+## Phase 4: Code Analysis & Multi-Language Support
+- [ ] Develop code analysis module for advanced flag reference extraction
 - [ ] Support multiple languages (JS, TS, Python, Java, C#, Go, PHP)
-- [ ] Implement extraction and validation of feature flag references
+- [ ] Implement extraction and validation of feature flag references (pattern-based)
 - [ ] Generate flag usage and delta reports
 
-## Phase 3: Flag Synchronization Core
+## Phase 5: Flag Synchronization Core
 - [ ] Build flag sync core module for lifecycle operations
 - [ ] Implement sync plan creation and execution
 - [ ] Enable flag creation, update, and archiving
 - [ ] Ensure consistency checks across environments
 
-## Phase 4: Environment Mapping & Promotion
+## Phase 6: Environment Mapping & Promotion
 - [ ] Develop environment mapping module
 - [ ] Support flexible environment hierarchies and promotion chains
 - [ ] Map deployment environments to Optimizely environments
 - [ ] Validate environment configuration and relationships
 
-## Phase 5: Audit, Security, and Compliance
-- [ ] Implement audit logging and reporting module
-- [ ] Add security utilities for token validation and data sanitization
-- [ ] Ensure all API calls and flag changes are logged
-- [ ] Provide audit reports as CI artifacts
-
-## Phase 6: Monitoring, Performance, and Observability
+## Phase 7: Monitoring, Performance, and Observability
 - [ ] Add metrics collection for sync performance and health
 - [ ] Implement alerting for errors, performance, and compliance
 - [ ] Optimize for parallel processing and API efficiency
 
-## Phase 7: Documentation & Adoption
+## Phase 8: Documentation & Adoption
 - [ ] Document configuration, usage, and troubleshooting
 - [ ] Provide onboarding guide for developers and DevOps
 - [ ] Collect feedback and iterate on solution
