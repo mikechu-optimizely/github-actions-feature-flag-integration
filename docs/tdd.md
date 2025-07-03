@@ -10,6 +10,7 @@ This Technical Design Document outlines the implementation of a GitHub Actions-b
 - **CI/CD Platform**: GitHub Actions for seamless repository integration
 - **Language**: TypeScript for type safety and developer experience
 - **Architecture**: Modular script-based approach for maintainability and testability
+- **Flag Cleanup Strategy**: Prioritize Optimizely-first approach for identifying and removing unused flags (see "Flag Cleanup and Synchronization Strategy" below)
 
 ## Architecture Overview
 
@@ -330,5 +331,48 @@ Comprehensive metrics tracking for monitoring synchronization performance and op
    - Limit concurrency to avoid overwhelming the Optimizely API
 2. **Searching**: Use native git commands for efficient file searching
 3. **Dependency Management**: Use Deno's built-in functions instead of external libraries to minimize dependencies and improve performance
+
+## Flag Cleanup and Synchronization Strategy
+
+```mermaid
+sequenceDiagram
+    participant OptimizelyAPI as Optimizely API
+    participant SyncJob as Flag Sync Job
+    participant Repo as Code Repository
+    participant Audit as Audit Log
+
+    SyncJob->>OptimizelyAPI: Fetch all feature flag keys
+    OptimizelyAPI-->>SyncJob: Return list of flags
+    loop For each flag key
+        SyncJob->>Repo: Search codebase for flag key usage
+        alt Flag key found in code
+            SyncJob->>Audit: Log flag as in use
+        else Flag key not found
+            SyncJob->>Audit: Log flag as unused
+            SyncJob->>OptimizelyAPI: Archive or remove unused flag
+        end
+    end
+    SyncJob->>Audit: Generate summary report
+```
+
+### Prioritization: Optimizely-First Approach
+
+To ensure a lean and accurate Optimizely configuration, this solution prioritizes an **Optimizely-first strategy** for feature flag cleanup and synchronization. The primary goal is to identify and archive or remove flags that exist in Optimizely but are no longer referenced in the codebase.
+
+#### Rationale
+- **Directly targets flag debt**: By starting with the list of all flags in Optimizely, the system can systematically check which ones are no longer referenced in the codebase and safely archive or remove them.
+- **Reduces configuration bloat**: Ensures that only flags actively used in code remain in Optimizely, minimizing clutter and potential confusion.
+- **Minimizes risk of missed orphans**: No flags that are still present in Optimizely but have been removed from code will be missed.
+- **Aligns with business priorities**: The organization is less concerned about new flags being added to code before Optimizely setup, and more concerned with cleaning up unused flags.
+
+#### Implementation Steps
+1. **Fetch all feature flag keys from Optimizely** (via API).
+2. **Search the codebase for each flag key** (string search, with context-aware filtering to avoid false positives from comments/tests).
+3. **Report or archive flags not found in code** (with audit logging for compliance).
+
+#### Additional Considerations
+- **False positives**: Code search should exclude comments, test fixtures, and documentation to avoid mistakenly keeping unused flags.
+- **Dynamic usage**: If the codebase uses dynamic flag keys, developer guidelines or code annotations should be used to help the tool catch these cases.
+- **Audit and reporting**: All archival actions should be logged and reported for compliance and review.
 
 **LEGAL NOTICE**: This document and all artifacts related to and including a final deployed solution are for illustrative purposes and are not officially supported by Optimizely nor any other entity. The solution is a conceptual framework designed to illustrate the potential benefits and implementation strategies for automated feature flag management.
