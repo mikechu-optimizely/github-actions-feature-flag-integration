@@ -11,7 +11,6 @@
 - Use internal libraries (project-specific unless otherwise defined), then external libraries, then writing your own solutions when needed
 - Use type hints for function parameters and return values
 - Always use conventional commit message format with no scope and include a bulleted list of changes as the description
-- Run `git --no-pager diff --staged` to get the changes for an accurate commit message & description
 - Watch for high entropy strings, which may indicate accidental secrets or sensitive data. Redact or remove such strings and alert the user.
 - Avoid having over 200-300 lines of code in a single file; refactor into external modules or classes as needed. This is a guideline, not a strict limit.
 

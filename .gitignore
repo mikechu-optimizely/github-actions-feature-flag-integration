@@ -24,9 +24,7 @@ coverage/
 # Environment and config
 .env
 .env.*
-
-# VSCode
-.vscode/
+!.env.example
 
 # OS
 .DS_Store
