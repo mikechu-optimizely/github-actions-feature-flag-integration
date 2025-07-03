@@ -3,7 +3,7 @@
   "tasks": {
     "lint": "deno lint src/",
     "fmt": "deno fmt src/",
-    "all": "deno task fmt && deno task lint",
+    "precommit": "deno task fmt && deno task lint",
     "test": "deno test --allow-all src/"
   }
 }
