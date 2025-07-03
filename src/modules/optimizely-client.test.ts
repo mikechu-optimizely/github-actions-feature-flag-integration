@@ -80,34 +80,62 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
   });
   // Mock the request method for isolation
   type ItemsResult = Result<{ items: OptimizelyFlag[] }, Error>;
-  client.request = (_path: string, _init?: RequestInit): Promise<ItemsResult> => Promise.resolve({
-    data: { items: [
-      { key: "flag_a", name: "Flag A", url: "/flags/flag_a", archived: false },
-      { key: "flag_b", name: "Flag B", url: "/flags/flag_b", archived: false },
-    ] },
-    error: null,
-  });
+  client.request = (_path: string, _init?: RequestInit): Promise<ItemsResult> =>
+    Promise.resolve({
+      data: {
+        items: [
+          {
+            key: "flag_a",
+            name: "Flag A",
+            url: "/flags/flag_a",
+            archived: false,
+          },
+          {
+            key: "flag_b",
+            name: "Flag B",
+            url: "/flags/flag_b",
+            archived: false,
+          },
+        ],
+      },
+      error: null,
+    });
   const result = await client.getAllFeatureFlags();
   if (!result.data || result.data.length !== 2) {
     throw new Error(`Expected 2 flags, got ${JSON.stringify(result.data)}`);
   }
   if (result.data[0].key !== "flag_a" || result.data[1].key !== "flag_b") {
-    throw new Error(`Unexpected flag keys: ${result.data.map(f => f.key)}`);
+    throw new Error(`Unexpected flag keys: ${result.data.map((f) => f.key)}`);
   }
-  if (typeof (result as Result<OptimizelyFlag[], Error>).error !== "undefined" && (result as Result<OptimizelyFlag[], Error>).error !== null) {
-    throw new Error(`Expected error to be null, got ${(result as Result<OptimizelyFlag[], Error>).error}`);
+  if (
+    typeof (result as Result<OptimizelyFlag[], Error>).error !== "undefined" &&
+    (result as Result<OptimizelyFlag[], Error>).error !== null
+  ) {
+    throw new Error(
+      `Expected error to be null, got ${
+        (result as Result<OptimizelyFlag[], Error>).error
+      }`,
+    );
   }
 });
 
 Deno.test("OptimizelyApiClient.getAllFeatureFlags returns error on failure", async () => {
   const client = new OptimizelyApiClient();
-  client.request = (_path: string, _init?: RequestInit): Promise<Result<OptimizelyFlag[], Error>> => Promise.resolve({ data: null, error: new Error("API failure") });
+  client.request = (
+    _path: string,
+    _init?: RequestInit,
+  ): Promise<Result<OptimizelyFlag[], Error>> =>
+    Promise.resolve({ data: null, error: new Error("API failure") });
   const result = await client.getAllFeatureFlags();
   if (result.data !== null && result.data?.length !== 0) {
-    throw new Error(`Expected data to be null or empty, got ${JSON.stringify(result.data)}`);
+    throw new Error(
+      `Expected data to be null or empty, got ${JSON.stringify(result.data)}`,
+    );
   }
   if (!(result.error instanceof Error)) {
-    throw new Error(`Expected error to be instance of Error, got ${result.error}`);
+    throw new Error(
+      `Expected error to be instance of Error, got ${result.error}`,
+    );
   }
 });
 

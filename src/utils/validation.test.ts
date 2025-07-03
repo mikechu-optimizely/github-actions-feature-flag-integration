@@ -1,9 +1,7 @@
 /**
  * Unit tests for validation utilities.
  */
-import {
-  assertThrows,
-} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { assertThrows } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { validateApiPath } from "./validation.ts";
 
 Deno.test("validateApiPath: accepts valid path", () => {

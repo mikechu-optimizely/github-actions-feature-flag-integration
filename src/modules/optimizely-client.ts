@@ -88,7 +88,10 @@ export class OptimizelyApiClient {
       }
       return await response.json() as T;
     };
-    return await retry.withExponentialBackoff<T, Error>(fetchRequest, this.maxRetries);
+    return await retry.withExponentialBackoff<T, Error>(
+      fetchRequest,
+      this.maxRetries,
+    );
   }
 
   /**
