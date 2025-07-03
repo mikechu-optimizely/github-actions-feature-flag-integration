@@ -10,7 +10,7 @@ This Technical Design Document outlines the implementation of a GitHub Actions-b
 - **CI/CD Platform**: GitHub Actions for seamless repository integration
 - **Language**: TypeScript for type safety and developer experience
 - **Architecture**: Modular script-based approach for maintainability and testability
-- **Flag Cleanup Strategy**: Prioritize Optimizely-first approach for identifying and removing unused flags (see "Flag Cleanup and Synchronization Strategy" below)
+- **Flag Cleanup Strategy**: Prioritize Optimizely-first approach for identifying and removing unused flags (see "Flag Cleanup Strategy" below)
 
 ## Architecture Overview
 
