@@ -1,9 +1,48 @@
 {
-  "importMap": "import_map.json",
+  "imports": {
+    "@std/assert": "https://deno.land/std@0.217.0/assert/mod.ts",
+    "@std/testing": "https://deno.land/std@0.217.0/testing/mod.ts",
+    "@std/http": "https://deno.land/std@0.217.0/http/mod.ts",
+    "@std/log": "https://deno.land/std@0.217.0/log/mod.ts",
+    "@std/path": "https://deno.land/std@0.217.0/path/mod.ts",
+    "@std/fs": "https://deno.land/std@0.217.0/fs/mod.ts",
+    "@std/json": "https://deno.land/std@0.217.0/json/mod.ts",
+    "@std/crypto": "https://deno.land/std@0.217.0/crypto/mod.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false,
+    "proseWrap": "preserve",
+    "include": ["src/"]
+  },
+  "test": {
+    "include": ["src/**/*.test.ts"],
+    "exclude": ["src/**/*.bench.ts"]
+  },
   "tasks": {
+    "start": "deno run --allow-all src/main.ts",
+    "test": "deno test --allow-all src/",
+    "test:watch": "deno test --allow-all --watch src/",
+    "test:coverage": "deno test --allow-all --coverage=coverage src/",
     "lint": "deno lint src/",
     "fmt": "deno fmt src/",
-    "precommit": "deno task fmt && deno task lint && deno task test",
-    "test": "deno test --allow-all src/"
-  }
+    "fmt:check": "deno fmt --check src/",
+    "precommit": "deno task fmt && deno task lint && deno task test"
+  },
+  "exclude": [
+    "node_modules",
+    "coverage"
+  ]
 }
