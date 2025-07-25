@@ -1,0 +1,115 @@
+name: Feature Flag Synchronization
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Operation type'
+        required: true
+        type: choice
+        options: ['cleanup', 'audit']
+        default: 'cleanup'
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  feature-flag-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      - name: Cache Deno Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/deno
+            ~/.deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
+      
+      - name: Validate Configuration
+        run: deno run --allow-read src/validate-config.ts
+        continue-on-error: true
+      
+      - name: Run Tests
+        run: deno task test:ci
+        env:
+          CI: 'true'
+
+      - name: Execute Feature Flag Cleanup
+        run: deno run --allow-all src/main.ts
+        env:
+          OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          OPTIMIZELY_PROJECT_ID: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPERATION: ${{ github.event.inputs.operation || 'cleanup' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+      
+      - name: Create Reports Directory
+        run: mkdir -p reports
+        if: always()
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ github.run_number }}
+          path: coverage/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Sync Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flag-sync-report-${{ github.run_number }}
+          path: reports/
+          retention-days: 30
+          if-no-files-found: warn
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        run: deno run --allow-all scripts/pr-comment.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.number }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+
+      - name: Job Summary
+        if: always()
+        run: |
+          echo "## Feature Flag Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Operation**: ${{ github.event.inputs.operation || 'cleanup' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ github.event.inputs.dry_run || 'true' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run ID**: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "reports/summary.md" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Execution Summary" >> $GITHUB_STEP_SUMMARY
+            cat reports/summary.md >> $GITHUB_STEP_SUMMARY
+          fi
