@@ -65,25 +65,32 @@ src/
 ├── main.ts                    # Entry point and CLI handling
 ├── config/
 │   ├── flag-sync-config.ts   # Configuration interfaces and defaults
-│   └── environment.ts        # Environment variable loading
+│   ├── environment.ts        # Environment variable loading
+│   └── environment.test.ts   # Environment configuration tests
 ├── modules/
 │   ├── code-analysis.ts      # Repository scanning and flag extraction
+│   ├── code-analysis.test.ts # Code analysis unit tests
 │   ├── flag-sync-core.ts     # Core synchronization logic
 │   ├── optimizely-client.ts  # Optimizely API client with rate limiting
+│   ├── optimizely-client.test.ts # API client unit tests
 │   ├── audit-reporter.ts     # Audit logging and reporting
-│   └── security.ts           # Security utilities and validation
+│   ├── audit-reporter.test.ts # Audit reporter unit tests
+│   ├── compliance-reporter.ts # Compliance reporting functionality
+│   ├── compliance-reporter.test.ts # Compliance reporter unit tests
+│   ├── flag-usage-reporter.ts # Flag usage reporting functionality
+│   ├── flag-usage-reporter.test.ts # Flag usage reporter unit tests
+│   ├── security.ts           # Security utilities and validation
+│   └── security.test.ts      # Security utilities unit tests
 ├── types/
 │   ├── optimizely.ts         # Optimizely API response types
 │   ├── sync.ts               # Synchronization data types
 │   └── config.ts             # Configuration types
-├── utils/
-│   ├── logger.ts             # Structured logging utilities
-│   ├── retry.ts              # Retry logic with exponential backoff
-│   └── validation.ts         # Input validation utilities
-└── __tests__/
-    ├── integration/          # Integration tests
-    ├── unit/                # Unit tests
-    └── fixtures/            # Test data and mocks
+└── utils/
+    ├── logger.ts             # Structured logging utilities
+    ├── retry.ts              # Retry logic with exponential backoff
+    ├── try-catch.ts          # Error handling utilities
+    ├── validation.ts         # Input validation utilities
+    └── validation.test.ts    # Validation utilities unit tests
 ```
 
 ## Technical Requirements
@@ -92,12 +99,11 @@ src/
 
 - **Deno**: Version 2.x (latest stable)
 - **TypeScript**: Version 5.x (bundled with Deno)
-- **GitHub Actions**: Ubuntu 22.04 LTS runner
+- **GitHub Actions**: Ubuntu latest
 
 ### External APIs
 
 - **Optimizely Feature Experimentation REST API**: v2
-- **GitHub REST API**: v2022-11-28 (for repository access)
 
 ## System Design
 
@@ -142,8 +148,6 @@ src/
 - `getFeatureFlags()`: Fetch all feature flags for a project
 - `getFlagDetails()`: Get detailed information for a specific flag
 - `batchGetFlagDetails()`: Batch fetch flag details with controlled concurrency
-- `createFeatureFlag()`: Create a new feature flag with validation
-- `updateFeatureFlag()`: Update existing feature flag configuration
 - `archiveFeatureFlag()`: Archive (soft delete) a feature flag
 - `getEnvironments()`: Retrieve all environments for a project
 - `validateToken()`: Validate API token and permissions
@@ -155,7 +159,7 @@ Core data structures for feature flag synchronization and code analysis.
 
 ## Implementation Details
 
-### GitHub Actions Workflow Structure
+### GitHub Actions Workflow Example
 
 ```yaml
 # .github/workflows/feature-flag-sync.yml
@@ -166,8 +170,6 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: '0 6 * * 1'  # Weekly cleanup on Mondays
   workflow_dispatch:
     inputs:
       operation:
@@ -194,13 +196,6 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      
-      - name: Cache Dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/deno
-          key: deno-${{ hashFiles('deno.json', 'deno.lock') }}
-          restore-keys: deno-
       
       - name: Validate Configuration
         run: deno run --allow-read src/validate-config.ts
@@ -352,3 +347,5 @@ To ensure a lean and accurate Optimizely configuration, this solution prioritize
 - **Audit and reporting**: All archival actions should be logged and reported for compliance and review.
 
 **LEGAL NOTICE**: This document and all artifacts related to and including a final deployed solution are for illustrative purposes and are not officially supported by Optimizely nor any other entity. The solution is a conceptual framework designed to illustrate the potential benefits and implementation strategies for automated feature flag management.
+
+(80% Sonnet 4 + 20% Mike Chu, Optimizely)
