@@ -6,7 +6,7 @@ import { FlagUsageReporter } from "./modules/flag-usage-reporter.ts";
 import { ComplianceReporter } from "./modules/compliance-reporter.ts";
 import { auditReporter } from "./modules/audit-reporter.ts";
 import { info, error, debug } from "./utils/logger.ts";
-import { validateInputs } from "./utils/validation.ts";parseArgs } from "https://deno.land/std@0.224.0/cli/parse_args.ts";
+import { validateInputs } from "./utils/validation.ts";
 import { loadEnvironment } from "./config/environment.ts";
 import { OptimizelyClient } from "./modules/optimizely-client.ts";
 import { CodeAnalyzer } from "./modules/code-analysis.ts";
@@ -21,7 +21,7 @@ import { validateInputs } from "./utils/validation.ts";
  */
 interface MainConfig {
   environment: string;
-  operation: "sync" | "cleanup" | "audit";
+  operation: "cleanup" | "audit";
   dryRun: boolean;
   executionId: string;
   reportsPath: string;
@@ -109,7 +109,7 @@ async function parseConfiguration(): Promise<MainConfig> {
     boolean: ["dry-run", "help"],
     default: {
       environment: "auto",
-      operation: "sync",
+      operation: "cleanup",
       "dry-run": true,
       "reports-path": "reports",
     },
@@ -126,8 +126,7 @@ async function parseConfiguration(): Promise<MainConfig> {
   // Validate configuration
   const config: MainConfig = {
     environment: args.environment || env.ENVIRONMENT || "auto",
-    operation: (args.operation || env.OPERATION || "sync") as
-      | "sync"
+    operation: (args.operation || env.OPERATION || "cleanup") as
       | "cleanup"
       | "audit",
     dryRun: args["dry-run"] ?? (env.DRY_RUN === "true"),
@@ -241,7 +240,7 @@ async function executeSynchronizationWorkflow(
   // Step 6: Execute cleanup operations (if not dry run)
   if (
     !config.dryRun &&
-    (config.operation === "cleanup" || config.operation === "sync")
+    config.operation === "cleanup"
   ) {
     info("🗑️ Executing cleanup operations...");
     await executeCleanupOperations(
@@ -343,7 +342,7 @@ USAGE:
 
 OPTIONS:
   --environment <env>     Target environment (default: auto)
-  --operation <op>        Operation type: sync, cleanup, audit (default: sync)
+  --operation <op>        Operation type: cleanup, audit (default: cleanup)
   --dry-run              Enable dry run mode (default: true)
   --reports-path <path>   Path for reports output (default: reports)
   --help                 Show this help message
