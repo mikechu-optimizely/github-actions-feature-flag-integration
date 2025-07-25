@@ -101,8 +101,8 @@ export function createCodeAnalysisConfig(
 ): CodeAnalysisConfig {
   return {
     workspaceRoot,
-    excludePatterns: DEFAULT_CONFIG.CODE_ANALYSIS.EXCLUDE_PATTERNS,
-    languages: DEFAULT_CONFIG.CODE_ANALYSIS.SUPPORTED_LANGUAGES,
+    excludePatterns: [...DEFAULT_CONFIG.CODE_ANALYSIS.EXCLUDE_PATTERNS],
+    languages: [...DEFAULT_CONFIG.CODE_ANALYSIS.SUPPORTED_LANGUAGES],
     concurrencyLimit: env.CONCURRENCY_LIMIT,
     maxFileSize: DEFAULT_CONFIG.CODE_ANALYSIS.MAX_FILE_SIZE,
   };
