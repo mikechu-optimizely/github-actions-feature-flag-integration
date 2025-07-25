@@ -68,7 +68,7 @@ For detailed architecture documentation, see [docs/tdd.md](docs/tdd.md).
 
    **Optional:**
    - `GITHUB_TOKEN` - GitHub token for repository access (auto-provided in Actions)
-   - `OPERATION` - Operation type: `sync`, `cleanup`, or `audit` (default: `sync`)
+   - `OPERATION` - Operation type: `cleanup` or `audit` (default: `cleanup`)
    - `DRY_RUN` - Enable dry run mode: `true` or `false` (default: `true`)
    - `REPORTS_PATH` - Path for reports output (default: `reports`)
    - `LOG_LEVEL` - Logging level: `debug`, `info`, `warn`, `error` (default: `info`)
@@ -124,7 +124,7 @@ The solution runs automatically via GitHub Actions:
 |----------|----------|---------|-------------|
 | `OPTIMIZELY_API_TOKEN` | Yes | - | Optimizely API authentication token |
 | `OPTIMIZELY_PROJECT_ID` | Yes | - | Optimizely project ID (numeric) |
-| `OPERATION` | No | `sync` | Operation type: `sync`, `cleanup`, `audit` |
+| `OPERATION` | No | `cleanup` | Operation type: `cleanup`, `audit` |
 | `DRY_RUN` | No | `true` | Enable dry-run mode (no actual changes) |
 | `ENVIRONMENT` | No | `auto` | Target environment identifier |
 | `REPORTS_PATH` | No | `reports` | Directory for output reports |
