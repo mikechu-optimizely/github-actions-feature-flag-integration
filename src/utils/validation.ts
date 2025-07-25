@@ -164,7 +164,9 @@ export function validateEnvironmentConfig(config: EnvironmentConfig): Validation
   // Validate operation
   const validOperations: OperationType[] = ["cleanup", "audit"];
   if (!validOperations.includes(config.OPERATION)) {
-    errors.push(`Invalid OPERATION: ${config.OPERATION}. Must be one of: ${validOperations.join(", ")}`);
+    errors.push(
+      `Invalid OPERATION: ${config.OPERATION}. Must be one of: ${validOperations.join(", ")}`,
+    );
   }
 
   // Validate numeric ranges
@@ -192,7 +194,9 @@ export function validateEnvironmentConfig(config: EnvironmentConfig): Validation
   // Validate log level
   const validLogLevels = ["debug", "info", "warn", "error"];
   if (!validLogLevels.includes(config.LOG_LEVEL.toLowerCase())) {
-    errors.push(`Invalid LOG_LEVEL: ${config.LOG_LEVEL}. Must be one of: ${validLogLevels.join(", ")}`);
+    errors.push(
+      `Invalid LOG_LEVEL: ${config.LOG_LEVEL}. Must be one of: ${validLogLevels.join(", ")}`,
+    );
   }
 
   // Warnings for potential issues

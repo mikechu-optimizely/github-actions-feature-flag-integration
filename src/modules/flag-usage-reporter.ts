@@ -82,9 +82,7 @@ export class FlagUsageReporter {
       flagUsages,
       unusedFlagKeys: unusedFlags,
       summary: {
-        usageRate: flagKeys.length > 0
-          ? (usedFlags.length / flagKeys.length) * 100
-          : 0,
+        usageRate: flagKeys.length > 0 ? (usedFlags.length / flagKeys.length) * 100 : 0,
         flagsByFile,
         mostUsedFlags,
       },
@@ -111,12 +109,8 @@ export class FlagUsageReporter {
     const currentFlags = new Set(currentUsages.keys());
     const previousFlags = new Set(previousUsages.keys());
 
-    const newFlags = Array.from(currentFlags).filter((flag) =>
-      !previousFlags.has(flag)
-    );
-    const removedFlags = Array.from(previousFlags).filter((flag) =>
-      !currentFlags.has(flag)
-    );
+    const newFlags = Array.from(currentFlags).filter((flag) => !previousFlags.has(flag));
+    const removedFlags = Array.from(previousFlags).filter((flag) => !currentFlags.has(flag));
     const changedUsages = new Map<
       string,
       { added: FlagUsage[]; removed: FlagUsage[] }

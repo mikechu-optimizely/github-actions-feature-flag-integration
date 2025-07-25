@@ -197,9 +197,7 @@ export async function findFlagUsagesInCodebase(
           if (flag === "feature_foo" && file.endsWith("main.ts")) {
             // Debug: log found usage
             console.debug(
-              `DEBUG: Found feature_foo in main.ts at line ${
-                i + 1
-              }: ${line.trim()}`,
+              `DEBUG: Found feature_foo in main.ts at line ${i + 1}: ${line.trim()}`,
             );
           }
           result.get(flag)?.push({ file, line: i + 1, context: line.trim() });

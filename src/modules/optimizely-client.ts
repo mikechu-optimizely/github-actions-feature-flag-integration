@@ -122,9 +122,7 @@ export class OptimizelyApiClient {
     const minInterval = 1000 / this.maxRps;
     const elapsed = now - this.lastRequestTime;
     if (elapsed < minInterval) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, minInterval - elapsed)
-      );
+      await new Promise((resolve) => setTimeout(resolve, minInterval - elapsed));
     }
     this.lastRequestTime = Date.now();
   }

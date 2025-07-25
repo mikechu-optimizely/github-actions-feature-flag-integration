@@ -1,12 +1,5 @@
-import {
-  sanitizeData,
-  validateGitHubToken,
-  validateOptimizelyToken,
-} from "./security.ts";
-import {
-  assertEquals,
-  assertThrows,
-} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { sanitizeData, validateGitHubToken, validateOptimizelyToken } from "./security.ts";
+import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 
 Deno.test("validateOptimizelyToken: accepts valid token", () => {
   validateOptimizelyToken("a".repeat(32));

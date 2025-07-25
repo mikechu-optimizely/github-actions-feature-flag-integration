@@ -50,7 +50,7 @@ export const DEFAULT_CONFIG = {
     ],
     MAX_FILE_SIZE: 1024 * 1024, // 1MB
   },
-  
+
   // Optimizely API defaults
   OPTIMIZELY: {
     BASE_URL: "https://api.optimizely.com/v2",
@@ -58,7 +58,7 @@ export const DEFAULT_CONFIG = {
     TIMEOUT: 30000, // 30 seconds
     MAX_RETRIES: 3,
   },
-  
+
   // Logging defaults
   LOGGING: {
     LEVEL: "info",
@@ -66,7 +66,7 @@ export const DEFAULT_CONFIG = {
     ENABLE_FILE: true,
     STRUCTURED_LOGGING: true,
   },
-  
+
   // Security defaults
   SECURITY: {
     SANITIZE_LOGS: true,
@@ -80,7 +80,7 @@ export const DEFAULT_CONFIG = {
  * Creates an Optimizely client configuration from environment config.
  */
 export function createOptimizelyClientConfig(
-  env: EnvironmentConfig
+  env: EnvironmentConfig,
 ): OptimizelyClientConfig {
   return {
     apiToken: env.OPTIMIZELY_API_TOKEN,
@@ -97,7 +97,7 @@ export function createOptimizelyClientConfig(
  */
 export function createCodeAnalysisConfig(
   env: EnvironmentConfig,
-  workspaceRoot: string = Deno.cwd()
+  workspaceRoot: string = Deno.cwd(),
 ): CodeAnalysisConfig {
   return {
     workspaceRoot,
@@ -145,8 +145,8 @@ export function createGitHubActionsConfig(): GitHubActionsConfig {
     ref: Deno.env.get("GITHUB_REF"),
     actor: Deno.env.get("GITHUB_ACTOR"),
     eventName: Deno.env.get("GITHUB_EVENT_NAME"),
-    prNumber: Deno.env.get("GITHUB_EVENT_NUMBER") 
-      ? parseInt(Deno.env.get("GITHUB_EVENT_NUMBER")!, 10) 
+    prNumber: Deno.env.get("GITHUB_EVENT_NUMBER")
+      ? parseInt(Deno.env.get("GITHUB_EVENT_NUMBER")!, 10)
       : undefined,
   };
 }
@@ -156,14 +156,14 @@ export function createGitHubActionsConfig(): GitHubActionsConfig {
  */
 export function createFlagSyncConfig(
   env: EnvironmentConfig,
-  executionId: string = crypto.randomUUID()
+  executionId: string = crypto.randomUUID(),
 ): FlagSyncConfig {
   return {
     dryRun: env.DRY_RUN,
     operation: env.OPERATION,
     executionId,
     reportsPath: env.REPORTS_PATH,
-    
+
     optimizely: createOptimizelyClientConfig(env),
     codeAnalysis: createCodeAnalysisConfig(env),
     logging: createLoggingConfig(env),
@@ -175,10 +175,10 @@ export function createFlagSyncConfig(
  * Creates a complete runtime configuration.
  */
 export function createRuntimeConfig(
-  env: EnvironmentConfig
+  env: EnvironmentConfig,
 ): RuntimeConfig {
   const executionId = env.GITHUB_RUN_ID || crypto.randomUUID();
-  
+
   return {
     environment: env,
     flagSync: createFlagSyncConfig(env, executionId),
@@ -203,52 +203,56 @@ export function validateFlagSyncConfig(config: FlagSyncConfig): ValidationResult
   if (!config.executionId) {
     errors.push("Missing execution ID");
   }
-  
+
   if (!config.reportsPath) {
     errors.push("Missing reports path");
   }
-  
+
   // Validate Optimizely configuration
   if (!config.optimizely.apiToken) {
     errors.push("Missing Optimizely API token");
   }
-  
+
   if (!config.optimizely.projectId) {
     errors.push("Missing Optimizely project ID");
   }
-  
+
   if (config.optimizely.rateLimit < 1 || config.optimizely.rateLimit > 100) {
     errors.push("Optimizely rate limit must be between 1 and 100 requests per second");
   }
-  
+
   if (config.optimizely.timeout < 1000 || config.optimizely.timeout > 300000) {
     errors.push("Optimizely timeout must be between 1000ms and 300000ms");
   }
-  
+
   // Validate code analysis configuration
   if (!config.codeAnalysis.workspaceRoot) {
     errors.push("Missing workspace root for code analysis");
   }
-  
+
   if (config.codeAnalysis.concurrencyLimit < 1 || config.codeAnalysis.concurrencyLimit > 20) {
     errors.push("Code analysis concurrency limit must be between 1 and 20");
   }
-  
+
   // Validate logging configuration
   const validLogLevels = ["debug", "info", "warn", "error"];
   if (!validLogLevels.includes(config.logging.level)) {
-    errors.push(`Invalid log level: ${config.logging.level}. Must be one of: ${validLogLevels.join(", ")}`);
+    errors.push(
+      `Invalid log level: ${config.logging.level}. Must be one of: ${validLogLevels.join(", ")}`,
+    );
   }
-  
+
   // Warnings for non-critical issues
   if (config.dryRun && config.operation === "cleanup") {
     warnings.push("Dry run mode is enabled for cleanup operation - no actual changes will be made");
   }
-  
+
   if (!config.logging.enableConsole && !config.logging.enableFile) {
-    warnings.push("Both console and file logging are disabled - you may miss important log messages");
+    warnings.push(
+      "Both console and file logging are disabled - you may miss important log messages",
+    );
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -262,26 +266,26 @@ export function validateFlagSyncConfig(config: FlagSyncConfig): ValidationResult
 export function validateRuntimeConfig(config: RuntimeConfig): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  
+
   // Validate flag sync config
   const flagSyncValidation = validateFlagSyncConfig(config.flagSync);
   errors.push(...flagSyncValidation.errors);
   warnings.push(...flagSyncValidation.warnings);
-  
+
   // Validate metadata
   if (!config.metadata.version) {
     warnings.push("Missing version information in metadata");
   }
-  
+
   if (!config.metadata.executionId) {
     errors.push("Missing execution ID in metadata");
   }
-  
+
   // GitHub-specific validations
   if (config.github?.token && config.github.token.length < 10) {
     warnings.push("GitHub token appears to be invalid or too short");
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors,

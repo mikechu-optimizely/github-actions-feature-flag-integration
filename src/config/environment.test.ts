@@ -1,11 +1,5 @@
-import {
-  assertEnvApiAvailable,
-  loadEnvironment,
-} from "./environment.ts";
-import {
-  assertEquals,
-  assertRejects,
-} from "https://deno.land/std@0.204.0/testing/asserts.ts";
+import { assertEnvApiAvailable, loadEnvironment } from "./environment.ts";
+import { assertEquals, assertRejects } from "https://deno.land/std@0.204.0/testing/asserts.ts";
 
 Deno.test("loadEnvironmentVariables returns all variables when present", async () => {
   const envVars = {

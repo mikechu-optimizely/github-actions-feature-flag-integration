@@ -1,10 +1,7 @@
 /**
  * Unit tests for OptimizelyApiClient.
  */
-import {
-  assert,
-  assertEquals,
-} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { assert, assertEquals } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { OptimizelyApiClient, OptimizelyFlag } from "./optimizely-client.ts";
 import { Result } from "../utils/try-catch.ts";
 
@@ -113,9 +110,7 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
     (result as Result<OptimizelyFlag[], Error>).error !== null
   ) {
     throw new Error(
-      `Expected error to be null, got ${
-        (result as Result<OptimizelyFlag[], Error>).error
-      }`,
+      `Expected error to be null, got ${(result as Result<OptimizelyFlag[], Error>).error}`,
     );
   }
 });

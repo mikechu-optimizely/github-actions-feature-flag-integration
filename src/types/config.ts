@@ -20,20 +20,20 @@ export interface EnvironmentConfig {
   // Required Optimizely configuration
   OPTIMIZELY_API_TOKEN: string;
   OPTIMIZELY_PROJECT_ID: string;
-  
+
   // Operation configuration
   ENVIRONMENT: string;
   OPERATION: OperationType;
   DRY_RUN: boolean;
   REPORTS_PATH: string;
   LOG_LEVEL: string;
-  
+
   // API configuration
   API_RATE_LIMIT: number;
   API_TIMEOUT: number;
   MAX_RETRIES: number;
   CONCURRENCY_LIMIT: number;
-  
+
   // Optional GitHub integration
   GITHUB_TOKEN?: string;
   GITHUB_RUN_ID?: string;
@@ -71,11 +71,11 @@ export interface FlagSyncConfig {
   operation: OperationType;
   executionId: string;
   reportsPath: string;
-  
+
   // Feature flags configuration
   optimizely: OptimizelyClientConfig;
   codeAnalysis: CodeAnalysisConfig;
-  
+
   // Operational settings
   logging: LoggingConfig;
   security: SecurityConfig;

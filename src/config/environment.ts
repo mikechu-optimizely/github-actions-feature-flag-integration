@@ -47,7 +47,7 @@ const OPTIONAL_VARS = [
 
 /**
  * Loads and validates environment variables with defaults and type safety.
- * 
+ *
  * @returns Validated environment configuration object
  * @throws Error if required variables are missing or invalid
  */
@@ -65,7 +65,7 @@ export async function loadEnvironment(): Promise<EnvironmentConfig> {
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missing.join(", ")}. ` +
-      "Please ensure these are set in your environment or GitHub secrets."
+        "Please ensure these are set in your environment or GitHub secrets.",
     );
   }
 
@@ -74,20 +74,20 @@ export async function loadEnvironment(): Promise<EnvironmentConfig> {
     // Required variables
     OPTIMIZELY_API_TOKEN: env.OPTIMIZELY_API_TOKEN!,
     OPTIMIZELY_PROJECT_ID: env.OPTIMIZELY_PROJECT_ID!,
-    
+
     // Optional variables with defaults
     ENVIRONMENT: env.ENVIRONMENT || DEFAULT_VALUES.ENVIRONMENT,
     OPERATION: validateOperation(env.OPERATION || DEFAULT_VALUES.OPERATION),
     DRY_RUN: parseBooleanEnv(env.DRY_RUN, DEFAULT_VALUES.DRY_RUN),
     REPORTS_PATH: env.REPORTS_PATH || DEFAULT_VALUES.REPORTS_PATH,
     LOG_LEVEL: validateLogLevel(env.LOG_LEVEL || DEFAULT_VALUES.LOG_LEVEL),
-    
+
     // API configuration
     API_RATE_LIMIT: parseIntEnv(env.API_RATE_LIMIT, DEFAULT_VALUES.API_RATE_LIMIT, 1, 100),
     API_TIMEOUT: parseIntEnv(env.API_TIMEOUT, DEFAULT_VALUES.API_TIMEOUT, 1000, 300000),
     MAX_RETRIES: parseIntEnv(env.MAX_RETRIES, DEFAULT_VALUES.MAX_RETRIES, 0, 10),
     CONCURRENCY_LIMIT: parseIntEnv(env.CONCURRENCY_LIMIT, DEFAULT_VALUES.CONCURRENCY_LIMIT, 1, 20),
-    
+
     // Optional GitHub integration
     GITHUB_TOKEN: env.GITHUB_TOKEN,
     GITHUB_RUN_ID: env.GITHUB_RUN_ID,
@@ -106,7 +106,7 @@ function validateOperation(operation: string): OperationType {
   const validOperations: OperationType[] = ["cleanup", "audit"];
   if (!validOperations.includes(operation as OperationType)) {
     throw new Error(
-      `Invalid OPERATION: "${operation}". Must be one of: ${validOperations.join(", ")}`
+      `Invalid OPERATION: "${operation}". Must be one of: ${validOperations.join(", ")}`,
     );
   }
   return operation as OperationType;
@@ -119,7 +119,7 @@ function validateLogLevel(logLevel: string): string {
   const validLevels = ["debug", "info", "warn", "error"];
   if (!validLevels.includes(logLevel.toLowerCase())) {
     throw new Error(
-      `Invalid LOG_LEVEL: "${logLevel}". Must be one of: ${validLevels.join(", ")}`
+      `Invalid LOG_LEVEL: "${logLevel}". Must be one of: ${validLevels.join(", ")}`,
     );
   }
   return logLevel.toLowerCase();
@@ -132,9 +132,9 @@ function parseBooleanEnv(value: string | undefined, defaultValue: string): boole
   const val = (value || defaultValue).toLowerCase();
   if (val === "true" || val === "1" || val === "yes") return true;
   if (val === "false" || val === "0" || val === "no") return false;
-  
+
   throw new Error(
-    `Invalid boolean value: "${value}". Must be one of: true, false, 1, 0, yes, no`
+    `Invalid boolean value: "${value}". Must be one of: true, false, 1, 0, yes, no`,
   );
 }
 
@@ -145,20 +145,20 @@ function parseIntEnv(
   value: string | undefined,
   defaultValue: string,
   min: number,
-  max: number
+  max: number,
 ): number {
   const val = parseInt(value || defaultValue, 10);
-  
+
   if (isNaN(val)) {
     throw new Error(`Invalid integer value: "${value}". Must be a valid number.`);
   }
-  
+
   if (val < min || val > max) {
     throw new Error(
-      `Value out of range: ${val}. Must be between ${min} and ${max}.`
+      `Value out of range: ${val}. Must be between ${min} and ${max}.`,
     );
   }
-  
+
   return val;
 }
 
@@ -169,21 +169,21 @@ async function validateEnvironmentConfig(config: EnvironmentConfig): Promise<voi
   // Validate API token format (basic check)
   if (!config.OPTIMIZELY_API_TOKEN.match(/^[a-zA-Z0-9._-]+$/)) {
     throw new Error(
-      "Invalid OPTIMIZELY_API_TOKEN format. Token should contain only alphanumeric characters, dots, underscores, and hyphens."
+      "Invalid OPTIMIZELY_API_TOKEN format. Token should contain only alphanumeric characters, dots, underscores, and hyphens.",
     );
   }
 
   // Validate project ID format
   if (!config.OPTIMIZELY_PROJECT_ID.match(/^[0-9]+$/)) {
     throw new Error(
-      "Invalid OPTIMIZELY_PROJECT_ID format. Must be a numeric project ID."
+      "Invalid OPTIMIZELY_PROJECT_ID format. Must be a numeric project ID.",
     );
   }
 
   // Validate reports path
   if (config.REPORTS_PATH.includes("..") || config.REPORTS_PATH.startsWith("/")) {
     throw new Error(
-      "Invalid REPORTS_PATH. Must be a relative path without directory traversal."
+      "Invalid REPORTS_PATH. Must be a relative path without directory traversal.",
     );
   }
 
@@ -193,7 +193,7 @@ async function validateEnvironmentConfig(config: EnvironmentConfig): Promise<voi
   } catch (error) {
     if (!(error instanceof Deno.errors.AlreadyExists)) {
       throw new Error(
-        `Failed to create reports directory "${config.REPORTS_PATH}": ${(error as Error).message}`
+        `Failed to create reports directory "${config.REPORTS_PATH}": ${(error as Error).message}`,
       );
     }
   }
@@ -205,12 +205,12 @@ async function validateEnvironmentConfig(config: EnvironmentConfig): Promise<voi
  */
 export function assertEnvApiAvailable(): void {
   if (
-    typeof Deno === "undefined" || 
+    typeof Deno === "undefined" ||
     typeof Deno.env === "undefined" ||
     typeof Deno.env.get !== "function"
   ) {
     throw new Error(
-      "Deno.env is not available. Ensure you are running in Deno with --allow-env permission."
+      "Deno.env is not available. Ensure you are running in Deno with --allow-env permission.",
     );
   }
 }
@@ -221,7 +221,7 @@ export function assertEnvApiAvailable(): void {
  */
 export function getSanitizedConfig(config: EnvironmentConfig): Partial<EnvironmentConfig> {
   const sanitized = { ...config };
-  
+
   // Mask sensitive values
   if (sanitized.OPTIMIZELY_API_TOKEN) {
     sanitized.OPTIMIZELY_API_TOKEN = `${sanitized.OPTIMIZELY_API_TOKEN.slice(0, 8)}...`;
@@ -229,6 +229,6 @@ export function getSanitizedConfig(config: EnvironmentConfig): Partial<Environme
   if (sanitized.GITHUB_TOKEN) {
     sanitized.GITHUB_TOKEN = `${sanitized.GITHUB_TOKEN.slice(0, 8)}...`;
   }
-  
+
   return sanitized;
 }

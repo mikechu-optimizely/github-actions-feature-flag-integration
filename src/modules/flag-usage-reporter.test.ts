@@ -1,7 +1,4 @@
-import {
-  assertEquals,
-  assertExists,
-} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { assertEquals, assertExists } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { FlagUsageReporter } from "./flag-usage-reporter.ts";
 import { FlagUsage } from "./code-analysis.ts";
 

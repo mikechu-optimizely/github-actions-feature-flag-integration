@@ -4,7 +4,7 @@ import { OptimizelyClient } from "./modules/optimizely-client.ts";
 import { FlagUsageReporter } from "./modules/flag-usage-reporter.ts";
 import { ComplianceReporter } from "./modules/compliance-reporter.ts";
 import { auditReporter } from "./modules/audit-reporter.ts";
-import { info, error, debug } from "./utils/logger.ts";
+import { debug, error, info } from "./utils/logger.ts";
 import { validateInputs } from "./utils/validation.ts";
 import { OptimizelyClient } from "./modules/optimizely-client.ts";
 import { CodeAnalyzer } from "./modules/code-analysis.ts";

@@ -11,7 +11,9 @@ import { AuditEvent, AuditEventType } from "../modules/audit-reporter.ts";
 /**
  * Mock environment configuration for testing.
  */
-export function createMockEnvironment(overrides: Partial<EnvironmentConfig> = {}): EnvironmentConfig {
+export function createMockEnvironment(
+  overrides: Partial<EnvironmentConfig> = {},
+): EnvironmentConfig {
   return {
     OPTIMIZELY_API_TOKEN: "test-token-12345",
     OPTIMIZELY_PROJECT_ID: "123456",
@@ -53,7 +55,7 @@ export function createMockFlag(overrides: Partial<OptimizelyFlag> = {}): Optimiz
  */
 export function createMockAuditEvent(
   type: AuditEventType = "flag_in_use",
-  overrides: Partial<AuditEvent> = {}
+  overrides: Partial<AuditEvent> = {},
 ): AuditEvent {
   return {
     timestamp: new Date().toISOString(),
@@ -71,15 +73,17 @@ export function createMockAuditEvent(
 /**
  * Mock fetch function for testing HTTP requests.
  */
-export function createMockFetch(responses: Array<{ 
-  url?: string | RegExp;
-  status?: number;
-  statusText?: string;
-  body?: unknown;
-  headers?: Record<string, string>;
-}>): typeof globalThis.fetch {
+export function createMockFetch(
+  responses: Array<{
+    url?: string | RegExp;
+    status?: number;
+    statusText?: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+  }>,
+): typeof globalThis.fetch {
   let callCount = 0;
-  
+
   return (input: string | Request | URL, _init?: RequestInit): Promise<Response> => {
     const url = typeof input === "string" ? input : input.toString();
     const response = responses[callCount] || responses[responses.length - 1];
@@ -209,11 +213,11 @@ export async function assertFileContains(path: string, content: string): Promise
  */
 export function assertJsonStructure(
   actual: string,
-  expected: Record<string, unknown>
+  expected: Record<string, unknown>,
 ): void {
   const parsed = JSON.parse(actual);
   assertEquals(typeof parsed, "object");
-  
+
   for (const [key, value] of Object.entries(expected)) {
     if (typeof value === "object" && value !== null) {
       assertEquals(typeof parsed[key], "object");
@@ -227,27 +231,27 @@ export function assertJsonStructure(
  * Creates a spy function that records calls.
  */
 export function createSpy<T extends (...args: unknown[]) => unknown>(
-  originalFn?: T
+  originalFn?: T,
 ): T & { calls: unknown[][]; callCount: number; reset: () => void } {
   const calls: unknown[][] = [];
-  
+
   const spy = ((...args: unknown[]) => {
     calls.push(args);
     return originalFn?.(...args);
   }) as T & { calls: unknown[][]; callCount: number; reset: () => void };
-  
+
   Object.defineProperty(spy, "calls", {
     get: () => calls,
   });
-  
+
   Object.defineProperty(spy, "callCount", {
     get: () => calls.length,
   });
-  
+
   spy.reset = () => {
     calls.length = 0;
   };
-  
+
   return spy;
 }
 
@@ -257,17 +261,17 @@ export function createSpy<T extends (...args: unknown[]) => unknown>(
 export async function waitFor(
   condition: () => boolean | Promise<boolean>,
   timeoutMs = 5000,
-  intervalMs = 100
+  intervalMs = 100,
 ): Promise<void> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeoutMs) {
     if (await condition()) {
       return;
     }
-    await new Promise(resolve => setTimeout(resolve, intervalMs));
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
-  
+
   throw new Error(`Condition not met within ${timeoutMs}ms`);
 }
 
@@ -328,7 +332,7 @@ export const TestFixtures = {
           },
         },
         {
-          key: "feature_flag_2", 
+          key: "feature_flag_2",
           name: "Feature Flag 2",
           description: "Second test feature flag",
           url: "/flags/feature_flag_2",
@@ -361,7 +365,7 @@ export const TestFixtures = {
       details: { flagKey: "feature_flag_1", files: ["src/feature.ts"] },
     },
     {
-      timestamp: "2024-01-01T00:01:00.000Z", 
+      timestamp: "2024-01-01T00:01:00.000Z",
       type: "flag_unused" as AuditEventType,
       message: "Flag not found in codebase",
       details: { flagKey: "unused_flag" },
