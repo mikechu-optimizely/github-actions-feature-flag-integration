@@ -63,7 +63,7 @@ Deno.test("ComplianceReporter generates comprehensive compliance report", () => 
   const config = {
     executionId: "test-exec-123",
     environment: "test",
-    operation: "sync",
+    operation: "cleanup",
     dryRun: false,
   };
 
@@ -77,7 +77,7 @@ Deno.test("ComplianceReporter generates comprehensive compliance report", () => 
   assertExists(report.timestamp);
   assertEquals(report.executionId, "test-exec-123");
   assertEquals(report.environment, "test");
-  assertEquals(report.operation, "sync");
+  assertEquals(report.operation, "cleanup");
   assertEquals(report.dryRun, false);
 
   // Verify summary

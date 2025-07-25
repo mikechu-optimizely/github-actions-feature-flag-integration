@@ -12,7 +12,7 @@ import { Result } from "../utils/try-catch.ts";
 const originalFetch = globalThis.fetch;
 const envVars = {
   OPTIMIZELY_API_TOKEN: "test-token",
-  OPTIMIZELY_PROJECT_ID: "pid",
+  OPTIMIZELY_PROJECT_ID: "123456",
   GITHUB_TOKEN: "gh-token",
   OPERATION: "cleanup",
   DRY_RUN: "true",
@@ -34,7 +34,7 @@ Deno.test("OptimizelyApiClient: successful request returns data", async () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-  const client = new OptimizelyApiClient();
+  const client = new OptimizelyApiClient("test-token");
   const result: Result<{ foo: string }, Error> = await client.request("/test");
   assertEquals(result, { data: { foo: "bar" }, error: null });
 });
@@ -49,7 +49,7 @@ Deno.test("OptimizelyApiClient: failed request returns error", async () => {
         headers: { "Content-Type": "text/plain" },
       }),
     );
-  const client = new OptimizelyApiClient();
+  const client = new OptimizelyApiClient("test-token");
   const result = await client.request("/fail");
   assert(result.error instanceof Error);
   assertEquals(result.data, null);
@@ -60,7 +60,7 @@ Deno.test("OptimizelyApiClient: failed request returns error", async () => {
 
 Deno.test("OptimizelyApiClient: invalid path returns error", async () => {
   setEnv();
-  const client = new OptimizelyApiClient();
+  const client = new OptimizelyApiClient("test-token");
   let errorCaught = false;
   try {
     await client.request("invalid-path");
@@ -74,7 +74,7 @@ Deno.test("OptimizelyApiClient: invalid path returns error", async () => {
 });
 
 Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects on success", async () => {
-  const client = new OptimizelyApiClient({
+  const client = new OptimizelyApiClient("test-token", {
     baseUrl: "http://localhost:8080/mock-api",
   });
   // Mock the request method for isolation
@@ -121,7 +121,7 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
 });
 
 Deno.test("OptimizelyApiClient.getAllFeatureFlags returns error on failure", async () => {
-  const client = new OptimizelyApiClient();
+  const client = new OptimizelyApiClient("test-token");
   client.request = (<T = unknown>(
     _path: string,
     _init?: RequestInit,
