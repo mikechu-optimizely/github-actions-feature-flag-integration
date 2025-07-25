@@ -141,7 +141,7 @@ async function parseConfiguration(): Promise<MainConfig> {
 /**
  * Initializes all required components.
  */
-async function initializeComponents(config: MainConfig) {
+async function initializeComponents(_config: MainConfig) {
   const env = await loadEnvironment();
 
   const optimizelyClient = new OptimizelyApiClient(
@@ -261,8 +261,8 @@ async function executeSynchronizationWorkflow(
  * Executes cleanup operations for unused flags.
  */
 async function executeCleanupOperations(
-  config: MainConfig,
-  optimizelyClient: OptimizelyApiClient,
+  _config: MainConfig,
+  _optimizelyClient: OptimizelyApiClient,
   unusedFlags: string[],
 ): Promise<void> {
   if (unusedFlags.length === 0) {
@@ -272,10 +272,14 @@ async function executeCleanupOperations(
 
   info(`🗑️ Archiving ${unusedFlags.length} unused flags...`);
 
-  const archivePromises = unusedFlags.map(async (flagKey) => {
+  for (const flagKey of unusedFlags) {
     try {
       // TODO: Implement archiveFeatureFlag method in OptimizelyApiClient
       // await optimizelyClient.archiveFeatureFlag(flagKey);
+
+      // For now, just simulate the async operation
+      await Promise.resolve();
+
       auditReporter.log({
         timestamp: new Date().toISOString(),
         type: "info",
@@ -299,9 +303,7 @@ async function executeCleanupOperations(
         details: { flag: flagKey, error: errorMessage },
       });
     }
-  });
-
-  await Promise.allSettled(archivePromises);
+  }
 }
 
 /**
