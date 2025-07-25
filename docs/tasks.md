@@ -3,27 +3,41 @@
 Legend
 TODO: Tasks that are yet to be completed
 WIP: Work in Progress tasks that are currently being worked on
-DONE: Tasks that have been completed
+TODO: Tasks that have been completed
+
+Instructions: 
+1. Select a parent task and mark it as WIP
+2. Read the task description and sub-tasks
+3. Complete the sub-tasks in order, marking them with a markdown checkbox
+4. Once all sub-tasks are completed, mark the parent task as DONE and stop work saying "Task: [task name] is completed."
+
+Notes:
+- Always first read the [docs/tdd.md] file to understand the task structure and requirements
+- Use the [docs/prd.md] file for functional requirements and acceptance criteria
+- You must always select a TODO task and own it until it is completed
+- If you need more guidance from the user, pause your task and ask for clarification
+- If you find the sub-task is already completed, mark it as `[x]` and move on to the next one
+- There will be other agents working on different tasks, so ensure you don't duplicate work
 
 ## Phase 1: Foundation & Setup
-- DONE: Set up Deno 2.x runtime and TypeScript 5.x environment
+- TODO: Set up runtime and language environment
   - [ ] Install Deno 2.x (latest stable)
   - [ ] Configure TypeScript 5.x (bundled with Deno)
   - [ ] Set up deno.json configuration file
   - [ ] Configure import_map.json for dependency management
   - [ ] Set up deno.lock for dependency locking
-- DONE: Establish project structure as per TDD
+- TODO: Establish project structure as per TDD
   - [ ] Create src/ directory structure
   - [ ] Set up config/, modules/, types/, utils/ subdirectories
   - [ ] Create main.ts entry point
   - [ ] Establish sibling test file pattern (*.test.ts)
-- DONE: Configure GitHub Actions workflow for CI/CD
+- TODO: Configure GitHub Actions workflow for CI/CD
   - [ ] Create .github/workflows/feature-flag-sync.yml
   - [ ] Configure triggers (push, PR, schedule, workflow_dispatch)
-  - [ ] Set up ubuntu-latest runner with 15-minute timeout
+  - [ ] Set up ubuntu-latest runner with 5-minute timeout
   - [ ] Add Deno setup and caching steps
   - [ ] Configure environment variables and secrets
-- DONE: Implement configuration management and environment variable loading
+- TODO: Implement configuration management and environment variable loading
   - [ ] Create environment.ts for env var loading
   - [ ] Create flag-sync-config.ts for configuration interfaces
   - [ ] Implement environment variable validation
@@ -42,26 +56,26 @@ DONE: Tasks that have been completed
   - [ ] Create troubleshooting guides
 
 ## Phase 2: Optimizely API Integration & Flag Discovery
-- DONE: Create Optimizely API client with authentication, rate limiting, and error handling
+- TODO: Create Optimizely API client with authentication, rate limiting, and error handling
   - [ ] Implement OptimizelyApiClient class with configuration options
   - [ ] Add authentication management and token validation
   - [ ] Implement rate limiting with configurable max RPS (default 5)
   - [ ] Add retry logic with exponential backoff
   - [ ] Create comprehensive error handling and graceful degradation
   - [ ] Implement request/response validation and type safety
-- DONE: Fetch all feature flag keys from Optimizely (API integration)
+- TODO: Fetch all feature flag keys from Optimizely (API integration)
   - [ ] Implement getAllFeatureFlags() method
   - [ ] Handle API pagination if required
   - [ ] Parse and validate API responses
   - [ ] Extract flag keys and metadata
   - [ ] Handle API rate limiting during bulk operations
-- DONE: Implement audit logging and reporting module
+- TODO: Implement audit logging and reporting module
   - [ ] Create audit-reporter.ts with comprehensive logging
   - [ ] Implement structured event logging with timestamps
   - [ ] Add user context and operation tracking
   - [ ] Create audit trail for all flag modifications
   - [ ] Implement report generation and export functionality
-- DONE: Add security utilities for token validation and data sanitization
+- TODO: Add security utilities for token validation and data sanitization
   - [ ] Create security.ts module
   - [ ] Implement API token format validation
   - [ ] Add data sanitization for logs and reports
@@ -87,25 +101,25 @@ DONE: Tasks that have been completed
   - [ ] Create API usage optimization recommendations
 
 ## Phase 3: Codebase Search & Flag Usage Analysis
-- DONE: Search codebase for each Optimizely flag key (string search, context-aware)
+- TODO: Search codebase for each Optimizely flag key (string search, context-aware)
   - [ ] Implement recursive file system scanning
   - [ ] Create flag key search algorithms with pattern matching
   - [ ] Add context-aware search to distinguish actual usage from comments
   - [ ] Implement multi-file search with performance optimization
   - [ ] Add configurable search patterns and exclusions
-- DONE: Exclude comments, test fixtures, and documentation from search
+- TODO: Exclude comments, test fixtures, and documentation from search
   - [ ] Implement comment detection for multiple languages
   - [ ] Add test file exclusion patterns (*.test.*, *.spec.*, __tests__)
   - [ ] Exclude documentation files (*.md, docs/, README files)
   - [ ] Filter out configuration and build files
   - [ ] Implement configurable exclusion patterns
-- DONE: Report or archive flags not found in code (with audit logging)
+- TODO: Report or archive flags not found in code (with audit logging)
   - [ ] Generate unused flag identification reports
   - [ ] Implement flag archiving recommendations
   - [ ] Create detailed audit logs for all flag operations
   - [ ] Add timestamp and context tracking for flag decisions
   - [ ] Implement safe archiving validation checks
-- DONE: Generate summary and compliance reports as CI artifacts
+- TODO: Generate summary and compliance reports as CI artifacts
   - [ ] Create comprehensive flag usage summary reports
   - [ ] Generate compliance reports for audit requirements
   - [ ] Implement CI artifact export functionality
@@ -125,13 +139,13 @@ DONE: Tasks that have been completed
   - [ ] Implement smart pattern recognition for flag variations
 
 ## Phase 4: Code Analysis & Multi-Language Support
-- DONE: Develop code analysis module for advanced flag reference extraction
+- TODO: Develop code analysis module for advanced flag reference extraction
   - [ ] Create code-analysis.ts with repository scanning capabilities
   - [ ] Implement scanRepository() for recursive source file analysis
   - [ ] Add extractFeatureFlags() with configurable language patterns
   - [ ] Create validateFlagReferences() for syntax validation
   - [ ] Implement generateFlagReport() for comprehensive usage reporting
-- DONE: Support multiple languages (JS, TS, Python, Java, C#, Go, PHP)
+- TODO: Support multiple languages (JS, TS, Python, Java, C#, Go, PHP)
   - [ ] JavaScript/TypeScript flag detection patterns
   - [ ] Python flag reference extraction
   - [ ] Java flag usage pattern recognition
@@ -139,13 +153,13 @@ DONE: Tasks that have been completed
   - [ ] Go language flag pattern support
   - [ ] PHP flag reference identification
   - [ ] Language-specific comment and string literal handling
-- DONE: Implement extraction and validation of feature flag references (pattern-based)
+- TODO: Implement extraction and validation of feature flag references (pattern-based)
   - [ ] Create configurable regex patterns for each language
   - [ ] Implement AST-based parsing for accurate extraction
   - [ ] Add validation for flag reference syntax and patterns
   - [ ] Create context-aware extraction to avoid false positives
   - [ ] Implement confidence scoring for flag matches
-- DONE: Generate flag usage and delta reports
+- TODO: Generate flag usage and delta reports
   - [ ] Create comprehensive flag usage reports
   - [ ] Implement compareWithPrevious() for delta analysis
   - [ ] Generate flag addition/removal tracking
