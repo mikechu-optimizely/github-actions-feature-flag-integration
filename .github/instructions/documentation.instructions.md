@@ -1,0 +1,23 @@
+---
+applyTo: '**/*.{md,txt}'
+---
+
+- Focus on clarity and brevity over verbosity
+- Use active voice and present tense when possible
+- Structure content with clear hierarchy (title, headings, subheadings)
+- Break complex ideas into digestible paragraphs (3-5 sentences max)
+- Use precise technical terminology without unnecessary jargon
+- Explain acronyms and abbreviations when first used
+- Include concrete examples when explaining abstract concepts when appropriate
+- Maintain consistent terminology throughout documentation
+- Front-load important information in paragraphs and sentences
+- Use numbered lists for sequential steps, bullet points for non-sequential items
+- Avoid weasel words and hedge phrases eg "might", "possibly", "could be"
+- Include quantifiable metrics when making performance claims
+- Format code references in `inline code` style within text
+- Use code blocks with language identifiers for longer code examples
+- Use tables for comparing multiple options or parameters
+- Highlight limitations, edge cases, or potential issues explicitly
+- Use proper grammar, punctuation, and spelling
+- Use consistent formatting for headings, lists, and code blocks
+- Use Markdown syntax for formatting (headings, lists, code blocks, links)
