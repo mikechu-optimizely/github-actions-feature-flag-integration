@@ -1,6 +1,6 @@
 # Feature Flag Synchronization Solution
 
-[![CI/CD](https://github.com/username/github-actions-feature-flag-integration/workflows/Feature%20Flag%20Synchronization/badge.svg)](https://github.com/username/github-actions-feature-flag-integration/actions)
+[![CI/CD](https://github.com/mikechu-optimizely/github-actions-feature-flag-integration/workflows/Feature%20Flag%20Synchronization/badge.svg)](https://github.com/username/github-actions-feature-flag-integration/actions)
 [![Deno Version](https://img.shields.io/badge/Deno-2.x-blue.svg)](https://deno.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
