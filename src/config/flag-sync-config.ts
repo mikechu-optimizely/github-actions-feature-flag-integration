@@ -9,6 +9,7 @@ import {
   FlagSyncConfig,
   GitHubActionsConfig,
   LoggingConfig,
+  LogLevel,
   OptimizelyClientConfig,
   RuntimeConfig,
   SecurityConfig,
@@ -112,7 +113,7 @@ export function createCodeAnalysisConfig(
  */
 export function createLoggingConfig(env: EnvironmentConfig): LoggingConfig {
   return {
-    level: env.LOG_LEVEL as any,
+    level: env.LOG_LEVEL as LogLevel,
     enableConsole: DEFAULT_CONFIG.LOGGING.ENABLE_CONSOLE,
     enableFile: DEFAULT_CONFIG.LOGGING.ENABLE_FILE,
     logFilePath: `${env.REPORTS_PATH}/execution.log`,
@@ -173,9 +174,9 @@ export function createFlagSyncConfig(
 /**
  * Creates a complete runtime configuration.
  */
-export async function createRuntimeConfig(
+export function createRuntimeConfig(
   env: EnvironmentConfig
-): Promise<RuntimeConfig> {
+): RuntimeConfig {
   const executionId = env.GITHUB_RUN_ID || crypto.randomUUID();
   
   return {

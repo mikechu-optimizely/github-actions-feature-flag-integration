@@ -4,7 +4,6 @@ import {
 } from "./environment.ts";
 import {
   assertEquals,
-  assertThrows,
   assertRejects,
 } from "https://deno.land/std@0.204.0/testing/asserts.ts";
 

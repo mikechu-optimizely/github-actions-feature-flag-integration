@@ -6,8 +6,6 @@ import {
   validateApiPath, 
   validateInputs, 
   validateFlagKey, 
-  validateFlagKeys, 
-  validateFilePath, 
   validateLogMessage 
 } from "./validation.ts";
 

@@ -3,7 +3,7 @@
  * Provides common testing patterns, mocks, and fixtures.
  */
 
-import { assertEquals, assertMatch } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { EnvironmentConfig, OperationType } from "../types/config.ts";
 import { OptimizelyFlag } from "../modules/optimizely-client.ts";
 import { AuditEvent, AuditEventType } from "../modules/audit-reporter.ts";
@@ -80,7 +80,7 @@ export function createMockFetch(responses: Array<{
 }>): typeof globalThis.fetch {
   let callCount = 0;
   
-  return async (input: string | Request | URL, init?: RequestInit): Promise<Response> => {
+  return (input: string | Request | URL, _init?: RequestInit): Promise<Response> => {
     const url = typeof input === "string" ? input : input.toString();
     const response = responses[callCount] || responses[responses.length - 1];
     callCount++;
@@ -103,7 +103,7 @@ export function createMockFetch(responses: Array<{
       ...response.headers,
     };
 
-    return new Response(body, { status, statusText, headers });
+    return Promise.resolve(new Response(body, { status, statusText, headers }));
   };
 }
 
