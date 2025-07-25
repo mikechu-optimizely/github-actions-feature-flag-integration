@@ -1,59 +1,59 @@
 # Feature Flag Cleanup Solution: Phased Task Plan
 
+Instructions: 
+1. Work on the parent task you were given by title which should have a status of `WIP`.
+2. Read your selected task's description and sub-tasks
+3. Read the [docs/tdd.md] file to understand the task structure and requirements
+4. Read the [docs/prd.md] file for functional requirements and acceptance criteria
+5. Complete the sub-tasks in order, marking them with a markdown checkbox `[x]` when done
+6. Once all sub-tasks are completed, mark the parent task as DONE and stop work saying "Task: [task name] is completed." and nothing else; no summary or explanation
+
+Notes:
+- You must work on your own it until it is completed
+- Never mark a task as WIP or TODO. You may only mark it as DONE or [x] if it is completed
+- If you need more guidance from the user, pause your task and ask for clarification
+- If you find the sub-task is already completed, mark it as `[x]` and move on to the next sub-task
+- There will be other agents working on different tasks, so ensure you don't duplicate work by reading the files and checking existing patterns
+
 Legend
 TODO: Tasks that are yet to be completed
 WIP: Work in Progress tasks that are currently being worked on
 TODO: Tasks that have been completed
 
-Instructions: 
-1. Select a parent task and mark it as WIP
-2. Read the task description and sub-tasks
-3. Complete the sub-tasks in order, marking them with a markdown checkbox
-4. Once all sub-tasks are completed, mark the parent task as DONE and stop work saying "Task: [task name] is completed."
-
-Notes:
-- Always first read the [docs/tdd.md] file to understand the task structure and requirements
-- Use the [docs/prd.md] file for functional requirements and acceptance criteria
-- You must always select a TODO task and own it until it is completed
-- If you need more guidance from the user, pause your task and ask for clarification
-- If you find the sub-task is already completed, mark it as `[x]` and move on to the next one
-- There will be other agents working on different tasks, so ensure you don't duplicate work
-
 ## Phase 1: Foundation & Setup
-- TODO: Set up runtime and language environment
-  - [ ] Install Deno 2.x (latest stable)
-  - [ ] Configure TypeScript 5.x (bundled with Deno)
-  - [ ] Set up deno.json configuration file
-  - [ ] Configure import_map.json for dependency management
-  - [ ] Set up deno.lock for dependency locking
-- TODO: Establish project structure as per TDD
-  - [ ] Create src/ directory structure
-  - [ ] Set up config/, modules/, types/, utils/ subdirectories
-  - [ ] Create main.ts entry point
-  - [ ] Establish sibling test file pattern (*.test.ts)
-- TODO: Configure GitHub Actions workflow for CI/CD
-  - [ ] Create .github/workflows/feature-flag-sync.yml
-  - [ ] Configure triggers (push, PR, schedule, workflow_dispatch)
-  - [ ] Set up ubuntu-latest runner with 5-minute timeout
-  - [ ] Add Deno setup and caching steps
-  - [ ] Configure environment variables and secrets
-- TODO: Implement configuration management and environment variable loading
-  - [ ] Create environment.ts for env var loading
-  - [ ] Create flag-sync-config.ts for configuration interfaces
-  - [ ] Implement environment variable validation
-  - [ ] Set up configuration defaults and type safety
-- TODO: Create comprehensive unit test suite structure for each module or code file
-  - [ ] Set up test runner configuration in deno.json
-  - [ ] Create test utilities and fixtures
-  - [ ] Implement test coverage reporting
-  - [ ] Set up continuous testing in GitHub Actions
-  - [ ] Create testing guidelines and standards
-- TODO: Set up development documentation and guidelines
-  - [ ] Create README.md with setup instructions
-  - [ ] Document coding standards and conventions
-  - [ ] Create contributing guidelines
-  - [ ] Set up API documentation generation
-  - [ ] Create troubleshooting guides
+- DONE: Set up runtime and language environment
+  - [x] Install Deno 2.x (latest stable)
+  - [x] Configure TypeScript 5.x (bundled with Deno)
+  - [x] Set up deno.json configuration file
+  - [x] Configure import_map.json for dependency management
+  - [x] Set up deno.lock for dependency locking
+- DONE: Establish project structure as per TDD
+  - [x] Create src/ directory structure
+  - [x] Set up config/, modules/, types/, utils/ subdirectories
+  - [x] Create main.ts entry point
+  - [x] Establish sibling test file pattern (*.test.ts)
+- DONE: Configure GitHub Actions workflow for CI/CD
+  - [x] Create .github/workflows/feature-flag-sync.yml
+  - [x] Configure triggers (push, PR, schedule, workflow_dispatch)
+  - [x] Set up ubuntu-latest runner with 5-minute timeout
+  - [x] Add Deno setup and caching steps
+  - [x] Configure environment variables and secrets
+- DONE: Implement configuration management and environment variable loading
+  - [x] Create environment.ts for env var loading
+  - [x] Create flag-sync-config.ts for configuration interfaces
+  - [x] Implement environment variable validation
+  - [x] Set up configuration defaults and type safety
+- DONE: Create comprehensive unit test suite structure for each module or code file
+  - [x] Set up test runner configuration in deno.json
+  - [x] Create test utilities and fixtures
+  - [x] Implement test coverage reporting
+  - [x] Set up continuous testing in GitHub Actions
+  - [x] Create testing guidelines and standards
+- DONE: Set up development documentation and guidelines
+  - [x] Create README.md with setup instructions
+  - [x] Document coding standards and conventions
+  - [x] Create contributing guidelines
+  - [x] Set up API documentation generation
 
 ## Phase 2: Optimizely API Integration & Flag Discovery
 - TODO: Create Optimizely API client with authentication, rate limiting, and error handling
