@@ -298,9 +298,3 @@ For questions and support:
 2. Review existing [GitHub Issues](../../issues)
 3. Create a new issue with detailed information about your problem
 
----
-
-**Version**: 1.0.0  
-**Last Updated**: 2024  
-**Deno Compatibility**: 2.x+  
-**TypeScript Version**: 5.x+
