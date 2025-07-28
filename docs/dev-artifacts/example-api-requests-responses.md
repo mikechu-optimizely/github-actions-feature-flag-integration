@@ -378,3 +378,61 @@ fetch(url, options)
   "revision": 4
 }
 ```
+
+## List Environments
+
+### Request
+
+```javascript
+const url = 'https://api.optimizely.com/flags/v1/projects/<project_id>/environments';
+const options = {
+  method: 'GET',
+  headers: {
+    accept: 'application/json',
+    authorization: 'Bearer <token>'
+  }
+};
+
+fetch(url, options)
+  .then(res => res.json())
+  .then(json => console.log(json))
+  .catch(err => console.error(err));
+```
+
+### Response
+
+```json
+{
+  "url": "/projects/4678434014625792/environments",
+  "items": [
+    {
+      "key": "production",
+      "name": "Production",
+      "archived": false,
+      "priority": 1,
+      "account_id": 21468570738,
+      "project_id": 4678434014625792,
+      "role": "admin",
+      "id": 101746715916459,
+      "has_restricted_permissions": true
+    },
+    {
+      "key": "development",
+      "name": "Development",
+      "archived": false,
+      "priority": 2,
+      "account_id": 21468570738,
+      "project_id": 4678434014625792,
+      "role": "admin",
+      "id": 361746715916479,
+      "has_restricted_permissions": false
+    }
+  ],
+  "page": 1,
+  "last_url": "/projects/4678434014625792/environments",
+  "total_count": 2,
+  "total_pages": 1,
+  "first_url": "/projects/4678434014625792/environments",
+  "count": 2
+}
+```
