@@ -17,7 +17,6 @@ export interface ComplianceReport {
     unusedFlags: number;
     usageRate: number;
     flagsArchived: number;
-    flagsCreated: number;
     flagsUpdated: number;
     errors: number;
   };
@@ -78,7 +77,6 @@ export class ComplianceReporter {
       unusedFlags: usageReport.unusedFlags,
       usageRate: usageReport.summary.usageRate,
       flagsArchived: auditCounts.flag_archived || 0,
-      flagsCreated: auditCounts.flag_created || 0,
       flagsUpdated: auditCounts.flag_updated || 0,
       errors: auditCounts.error || 0,
     };

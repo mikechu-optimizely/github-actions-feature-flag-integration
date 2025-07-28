@@ -27,6 +27,29 @@ export function validateGitHubToken(token: string): void {
 }
 
 /**
+ * Encrypts a secret using a simple algorithm for demonstration purposes.
+ * In production, use a proper encryption library with key management.
+ * @param secret The secret string to encrypt
+ * @returns Encrypted secret
+ */
+export function encryptSecret(secret: string): string {
+  // This is a placeholder for an actual encryption algorithm
+  const buffer = new TextEncoder().encode(secret);
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
+/**
+ * Logs security-related events for auditing purposes.
+ * @param event The security event type
+ * @param details Additional details about the event
+ */
+export function logSecurityEvent(event: string, details?: Record<string, unknown>): void {
+  const timestamp = new Date().toISOString();
+  const sanitizedDetails = details ? sanitizeData(details) : {};
+  console.log(`[SECURITY EVENT] ${timestamp}: ${event}`, sanitizedDetails);
+}
+
+/**
  * Sanitizes sensitive fields in an object for safe logging/reporting.
  * @param obj The object to sanitize
  * @param fields Fields to redact (default: ["token", "apiKey", "authorization"])
