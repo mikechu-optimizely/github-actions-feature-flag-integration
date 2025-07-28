@@ -6,11 +6,12 @@ applyTo: '**/*.{ts,tsx}'
 
 ## General Coding Rules
 - Act as a security-focused Staff Software Engineer at Optimizely
+- Use TypeScript 5.x for all code to ensure type safety and maintainability
 - Exhaust all options with existing patterns before introducing new technologies; remove old implementations to avoid duplicate logic
 - Keep codebases clean and organized
 - Avoid unnecessary scripts, especially one-time use scripts in production files
 - Use mocking only in test files, never in production code
-- Prefer functional programming patterns for clarity and maintainability when appropriate
+- Prefer functional programming patterns for clarity and maintainability when appropriate; use immutable data structures and avoid side effects
 - Structure for testability with dependency injection and separation of concerns
 - Address edge cases and failure modes explicitly
 - Use idiomatic solutions for TypeScript
@@ -18,7 +19,7 @@ applyTo: '**/*.{ts,tsx}'
 - Specify language version, framework, and style preferences when requesting code generation
 - Never use `console.log`. Use `console.debug`, `console.info`, `console.warn`, or `console.error` as appropriate
 - Always produce clear, concise code, striving for simplicity
-- Produce secure code by sanitizing inputs, validating outputs, handling errors, etc
+- Produce secure code by sanitizing inputs, validating outputs, handling errors, etc; validate all external inputs to avoid injection vulnerabilities
 - Always create descriptive and meaningful names for variables, functions, classes, etc
 - Add, update, and correct JSDoc for classes and functions/methods
 - Produce performant code, considering aspects like caching, lazy loading, and code splitting
@@ -28,6 +29,7 @@ applyTo: '**/*.{ts,tsx}'
 - Always use conventional commit message format (see [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)) with a bulleted list of changes as the description
 - Watch for high entropy strings, which may indicate accidental secrets or sensitive data. Redact or remove such strings and alert the user
 - Avoid having over 200-300 lines of code in a single file; refactor into external modules or classes as needed
+- Protect secrets and avoid logging sensitive data
 
 ## Type System and Safety
 - Use strict TypeScript configuration (`strict: true` in tsconfig.json)
@@ -48,20 +50,48 @@ applyTo: '**/*.{ts,tsx}'
 - Use numeric separators for readability in large numbers (e.g., `1_000_000`)
 
 ## Code Organization
+- Organize code into modules based on functionality
+- Use path aliases and Deno's import maps where feasible to simplify import paths
+- Prefer small, pure functions with clear input/output mappings
 - Prefer `const` and `let` over `var`
 - Use arrow functions for callbacks and functional programming patterns
 - Use template literals instead of string concatenation
-- Implement proper error handling with try/catch blocks for async operations
+- Implement proper error handling with try/catch blocks for async operations; employ try-catch statements judiciously to manage exceptions
 - Use modern ES6+ features (destructuring, spread operator, modules)
 - Prefer immutable data patterns when possible
 - Use proper module imports/exports with explicit types
 
+## Naming Conventions
+- **Variables**: Use camelCase for variables, functions, and method names
+- **Classes & Interfaces**: Use PascalCase for classes and interfaces
+- **Constants**: Use UPPER_SNAKE_CASE for const values, especially for configuration variables
+- **Enums**: Use PascalCase, and for enum values, use UPPER_SNAKE_CASE
+
 ## Testing and Quality
+- Use Deno's built-in test framework for all tests
+- Write tests to achieve >80% code coverage for critical modules
+- Co-locate test files alongside the modules they test, following the `*.test.ts` pattern
 - Use modern testing frameworks (Vitest, inbuilt Deno) with proper TypeScript configuration
 - Write type-safe tests with proper type assertions
 - Use `@types/` packages for third-party library types
 - Follow React best practices when applicable (hooks, functional components, proper state management)
 - Implement proper error boundaries with TypeScript error types
+- Use consistent formatting with the project's lint and format rules to ensure consistent code style
+
+## Comments and Documentation
+- Ensure code comments are descriptive and concise
+- Use JSDoc-style comments for functions, methods, and classes:
+  ```typescript
+  /**
+   * Adds two numbers
+   * @param a {number} The first number
+   * @param b {number} The second number
+   * @returns {number} The sum of a and b
+   */
+  function add(a: number, b: number): number {
+    return a + b;
+  }
+  ```
 
 ## Performance and Best Practices
 - Use type-only imports (`import type`) when importing only types
