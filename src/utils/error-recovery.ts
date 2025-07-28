@@ -1,8 +1,12 @@
 import * as logger from "./logger.ts";
-import { Result } from "./try-catch.ts";
-import { CircuitBreaker, CircuitBreakerState, isApiErrorCritical } from "./circuit-breaker.ts";
+import { CircuitBreaker, isApiErrorCritical } from "./circuit-breaker.ts";
 import { ApiHealthMonitor, HealthStatus } from "./api-health-monitor.ts";
 import { ApiFallbackManager, FallbackConfig } from "./api-fallback.ts";
+
+/**
+ * Result type for internal operations
+ */
+type Result<T, E = Error> = { data: T; error: null } | { data: null; error: E };
 
 /**
  * Recovery strategy types

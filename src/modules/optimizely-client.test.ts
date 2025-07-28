@@ -16,11 +16,40 @@ const envVars = {
   DRY_RUN: "true",
 };
 
+// Store original environment values to restore after tests
+const originalEnvValues: Record<string, string | undefined> = {};
+
 function setEnv() {
+  // Store original values before setting test values
+  for (const key of Object.keys(envVars)) {
+    if (!(key in originalEnvValues)) {
+      originalEnvValues[key] = Deno.env.get(key);
+    }
+  }
+
   for (const [k, v] of Object.entries(envVars)) {
     Deno.env.set(k, v);
   }
 }
+
+function restoreEnv() {
+  // Restore original environment values
+  for (const [key, originalValue] of Object.entries(originalEnvValues)) {
+    if (originalValue === undefined) {
+      Deno.env.delete(key);
+    } else {
+      Deno.env.set(key, originalValue);
+    }
+  }
+  // Clear the stored values
+  Object.keys(originalEnvValues).forEach((key) => delete originalEnvValues[key]);
+}
+
+// Add cleanup after all tests
+Deno.test("OptimizelyApiClient: cleanup environment", () => {
+  restoreEnv();
+  globalThis.fetch = originalFetch;
+});
 
 Deno.test("OptimizelyApiClient: successful request returns data", async () => {
   setEnv();

@@ -3,21 +3,13 @@ import * as logger from "../utils/logger.ts";
 import * as retry from "../utils/retry.ts";
 import * as validation from "../utils/validation.ts";
 import { Result } from "../utils/try-catch.ts";
-import {
-  CircuitBreaker,
-  CircuitBreakerState,
-  isApiErrorCritical,
-} from "../utils/circuit-breaker.ts";
+import { CircuitBreaker, isApiErrorCritical } from "../utils/circuit-breaker.ts";
 import {
   ApiHealthMonitor,
   createAuthenticatedHealthCheck,
   HealthStatus,
 } from "../utils/api-health-monitor.ts";
-import {
-  ApiFallbackManager,
-  createDefaultFallbackConfig,
-  FallbackStrategy,
-} from "../utils/api-fallback.ts";
+import { ApiFallbackManager, createDefaultFallbackConfig } from "../utils/api-fallback.ts";
 import { createDefaultRecoveryConfig, ErrorRecoveryManager } from "../utils/error-recovery.ts";
 import {
   FlagConsistencyValidation,
@@ -112,14 +104,8 @@ export class OptimizelyApiClient {
       "optimizely-api-recovery",
       createDefaultRecoveryConfig({
         fallbackConfig: createDefaultFallbackConfig({
-          getDefaultValues: async () => {
-            // Return empty data structures for safe defaults
-            return null;
-          },
-          getOfflineData: async () => {
-            // Return cached data or safe defaults in offline mode
-            return null;
-          },
+          getDefaultValues: () => Promise.resolve(null),
+          getOfflineData: () => Promise.resolve(null),
           enableGracefulDegradation: this.enableGracefulDegradation,
         }),
       }),

@@ -133,14 +133,42 @@ export class CircuitBreaker<T> {
    * @param fn Function to execute
    * @returns Promise resolving to the function result
    */
-  private async executeWithTimeout(fn: () => Promise<T>): Promise<T> {
+  private executeWithTimeout(fn: () => Promise<T>): Promise<T> {
+    let timeoutId: number;
+    let isResolved = false;
+
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Operation timed out after ${this.timeoutMs}ms`));
+      timeoutId = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          reject(new Error(`Operation timed out after ${this.timeoutMs}ms`));
+        }
       }, this.timeoutMs);
     });
 
-    return Promise.race([fn(), timeoutPromise]);
+    const operation = fn().then(
+      (result) => {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timeoutId);
+          return result;
+        }
+        // If already resolved by timeout, return a promise that never resolves
+        // This prevents the result from being processed
+        return new Promise<T>(() => {});
+      },
+      (error) => {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timeoutId);
+          throw error;
+        }
+        // If already resolved by timeout, return a promise that never resolves
+        return new Promise<T>(() => {});
+      },
+    );
+
+    return Promise.race([operation, timeoutPromise]);
   }
 
   /**

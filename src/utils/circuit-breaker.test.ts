@@ -13,9 +13,7 @@ Deno.test("CircuitBreaker - Should open after failure threshold", async () => {
     timeoutMs: 100,
   });
 
-  const failingOperation = async () => {
-    throw new Error("500: Server error");
-  };
+  const failingOperation = () => Promise.reject(new Error("500: Server error"));
 
   // First failure
   await assertRejects(() => cb.execute(failingOperation));
@@ -32,11 +30,10 @@ Deno.test("CircuitBreaker - Should transition to HALF_OPEN after timeout", async
     failureThreshold: 1,
     resetTimeoutMs: 50,
     timeoutMs: 100,
+    successThreshold: 1, // Set to 1 so circuit closes after 1 success
   });
 
-  const failingOperation = async () => {
-    throw new Error("500: Server error");
-  };
+  const failingOperation = () => Promise.reject(new Error("500: Server error"));
 
   // Open the circuit
   await assertRejects(() => cb.execute(failingOperation));
@@ -45,8 +42,8 @@ Deno.test("CircuitBreaker - Should transition to HALF_OPEN after timeout", async
   // Wait for reset timeout
   await new Promise((resolve) => setTimeout(resolve, 60));
 
-  // Next request should transition to HALF_OPEN
-  const successOperation = async () => "success";
+  // Next request should transition to HALF_OPEN, then to CLOSED after success
+  const successOperation = () => Promise.resolve("success");
   const result = await cb.execute(successOperation);
   assertEquals(result, "success");
   assertEquals(cb.getState(), CircuitBreakerState.CLOSED);
@@ -58,9 +55,7 @@ Deno.test("CircuitBreaker - Should not count non-critical errors", async () => {
     isErrorCritical: isApiErrorCritical,
   });
 
-  const clientErrorOperation = async () => {
-    throw new Error("404: Not found");
-  };
+  const clientErrorOperation = () => Promise.reject(new Error("404: Not found"));
 
   // Client errors shouldn't count towards failure threshold
   await assertRejects(() => cb.execute(clientErrorOperation));
@@ -77,24 +72,32 @@ Deno.test("CircuitBreaker - Should handle timeout", async () => {
     timeoutMs: 50,
   });
 
+  let timeoutId: number | undefined;
   const slowOperation = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => {
+      timeoutId = setTimeout(resolve, 100);
+    });
     return "success";
   };
 
-  await assertRejects(
-    () => cb.execute(slowOperation),
-    Error,
-    "Operation timed out after 50ms",
-  );
+  try {
+    await assertRejects(
+      () => cb.execute(slowOperation),
+      Error,
+      "Operation timed out after 50ms",
+    );
+  } finally {
+    // Clean up the timer to prevent leaks in tests
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 });
 
 Deno.test("CircuitBreaker - Should reset manually", async () => {
   const cb = new CircuitBreaker("test-circuit", { failureThreshold: 1 });
 
-  const failingOperation = async () => {
-    throw new Error("500: Server error");
-  };
+  const failingOperation = () => Promise.reject(new Error("500: Server error"));
 
   // Open the circuit
   await assertRejects(() => cb.execute(failingOperation));
@@ -109,10 +112,8 @@ Deno.test("CircuitBreaker - Should reset manually", async () => {
 Deno.test("CircuitBreaker - Should provide statistics", async () => {
   const cb = new CircuitBreaker("test-circuit", { failureThreshold: 2 });
 
-  const successOperation = async () => "success";
-  const failingOperation = async () => {
-    throw new Error("500: Server error");
-  };
+  const successOperation = () => Promise.resolve("success");
+  const failingOperation = () => Promise.reject(new Error("500: Server error"));
 
   await cb.execute(successOperation);
   await assertRejects(() => cb.execute(failingOperation));

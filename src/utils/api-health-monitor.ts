@@ -1,5 +1,4 @@
 import * as logger from "./logger.ts";
-import { Result } from "./try-catch.ts";
 
 /**
  * API health status levels

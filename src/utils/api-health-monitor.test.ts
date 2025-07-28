@@ -142,10 +142,8 @@ Deno.test("ApiHealthMonitor - Should track uptime percentage", async () => {
     minChecksForStats: 1,
   });
 
-  const successOperation = async () => "success";
-  const failOperation = async () => {
-    throw new Error("Failed");
-  };
+  const successOperation = () => Promise.resolve("success");
+  const failOperation = () => Promise.reject(new Error("Failed"));
 
   await monitor.performHealthCheck(successOperation);
   await monitor.performHealthCheck(successOperation);
@@ -163,7 +161,7 @@ Deno.test("ApiHealthMonitor - Should maintain recent checks window", async () =>
     windowSize: 3,
   });
 
-  const operation = async () => "success";
+  const operation = () => Promise.resolve("success");
 
   // Add 5 checks, should only keep last 3
   for (let i = 0; i < 5; i++) {
@@ -177,7 +175,7 @@ Deno.test("ApiHealthMonitor - Should maintain recent checks window", async () =>
 Deno.test("ApiHealthMonitor - Should reset statistics", async () => {
   const monitor = new ApiHealthMonitor("test-api");
 
-  const operation = async () => "success";
+  const operation = () => Promise.resolve("success");
   await monitor.performHealthCheck(operation);
 
   let stats = monitor.getHealthStats();
@@ -190,7 +188,7 @@ Deno.test("ApiHealthMonitor - Should reset statistics", async () => {
   assertEquals(stats.currentStatus, HealthStatus.UNKNOWN);
 });
 
-Deno.test("createHttpHealthCheck - Should create working health check function", async () => {
+Deno.test("createHttpHealthCheck - Should create working health check function", () => {
   // This test would require a real HTTP endpoint, so we'll just test the function creation
   const healthCheck = createHttpHealthCheck("https://api.example.com/health");
 

@@ -1,6 +1,4 @@
 import * as logger from "./logger.ts";
-import { Result } from "./try-catch.ts";
-import { HealthStatus } from "./api-health-monitor.ts";
 
 /**
  * Fallback strategy types
@@ -458,13 +456,15 @@ export function createFeatureFlagFallbackConfig(
   defaultFlags: Record<string, boolean> = {},
 ): FallbackConfig<Record<string, boolean>> {
   return createDefaultFallbackConfig({
-    getDefaultValues: async () => defaultFlags,
-    getOfflineData: async () => {
+    getDefaultValues: () => Promise.resolve(defaultFlags),
+    getOfflineData: () => {
       // In offline mode, assume all flags are disabled for safety
-      return Object.keys(defaultFlags).reduce((acc, key) => {
-        acc[key] = false;
-        return acc;
-      }, {} as Record<string, boolean>);
+      return Promise.resolve(
+        Object.keys(defaultFlags).reduce((acc, key) => {
+          acc[key] = false;
+          return acc;
+        }, {} as Record<string, boolean>),
+      );
     },
   });
 }

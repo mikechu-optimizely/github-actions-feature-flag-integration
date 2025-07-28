@@ -21,6 +21,9 @@ import {
 } from "./test-helpers.ts";
 
 Deno.test("createMockEnvironment returns valid environment config", () => {
+  // Ensure clean environment at start
+  cleanupTestEnvironment();
+
   const env = createMockEnvironment();
 
   assertEquals(env.OPTIMIZELY_API_TOKEN, "test-token-12345");
