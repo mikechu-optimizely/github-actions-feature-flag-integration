@@ -24,6 +24,7 @@ applyTo: '**/*.{ts,tsx}'
 - Produce performant code, considering aspects like caching, lazy loading, and code splitting
 - Utilize asynchronous (async/await) instead of callbacks or synchronous code unless explicitly requested
 - Use internal libraries (project-specific unless otherwise defined), then external libraries, then writing your own solutions when needed
+- Before commit, run `deno task precommit` to ensure code quality and consistency
 - Always use conventional commit message format (see [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)) with a bulleted list of changes as the description
 - Watch for high entropy strings, which may indicate accidental secrets or sensitive data. Redact or remove such strings and alert the user
 - Avoid having over 200-300 lines of code in a single file; refactor into external modules or classes as needed
