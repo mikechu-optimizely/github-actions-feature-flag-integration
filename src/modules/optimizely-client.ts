@@ -247,22 +247,20 @@ export class OptimizelyApiClient {
       }
 
       const allFlags: OptimizelyFlag[] = [];
-      let nextPageToken: string | undefined;
-      let pageCount = 0;
+      let currentPage = 1;
+      let totalPages = 1;
 
       do {
-        // Construct path with pagination support
+        // Construct path with page-based pagination
         const basePath = `/flags/v1/projects/${encodeURIComponent(projectId)}/flags`;
-        const path = nextPageToken
-          ? `${basePath}?page_token=${encodeURIComponent(nextPageToken)}`
-          : basePath;
+        const path = currentPage > 1 ? `${basePath}?page=${currentPage}` : basePath;
 
         const result = await this.request<OptimizelyPaginatedResponse<OptimizelyFlag>>(path);
 
         if (result.error) {
           logger.error("Failed to fetch feature flags", {
             projectId,
-            page: pageCount,
+            page: currentPage,
             error: result.error.message,
           });
           return { data: null, error: result.error };
@@ -272,34 +270,37 @@ export class OptimizelyApiClient {
         const flags = response?.items ?? [];
         allFlags.push(...flags);
 
-        nextPageToken = response?.nextPageToken;
-        pageCount++;
+        // Update pagination info from response
+        totalPages = response?.total_pages ?? 1;
+        currentPage++;
 
         logger.debug("Fetched feature flags page", {
           projectId,
-          page: pageCount,
+          page: currentPage - 1,
           flagsOnPage: flags.length,
           totalFlagsSoFar: allFlags.length,
-          hasNextPage: !!nextPageToken,
+          totalPages,
+          hasMorePages: currentPage <= totalPages,
         });
 
         // Safety check to prevent infinite loops
-        if (pageCount > 100) {
+        if (currentPage > 100) {
           logger.warn("Reached maximum page limit while fetching flags", {
             projectId,
-            pageCount,
+            currentPage,
             totalFlags: allFlags.length,
           });
           break;
         }
-      } while (nextPageToken);
+      } while (currentPage <= totalPages);
 
       logger.info(
-        `Successfully fetched ${allFlags.length} feature flags across ${pageCount} pages`,
+        `Successfully fetched ${allFlags.length} feature flags across ${currentPage - 1} pages`,
         {
           projectId,
           flagCount: allFlags.length,
-          pageCount,
+          pageCount: currentPage - 1,
+          totalPages,
         },
       );
 

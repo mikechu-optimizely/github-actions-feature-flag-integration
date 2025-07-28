@@ -76,6 +76,7 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
   ): Promise<Result<T, Error>> =>
     Promise.resolve({
       data: {
+        url: "/projects/123456/flags",
         items: [
           {
             key: "flag_a",
@@ -90,7 +91,13 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
             archived: false,
           },
         ],
-        nextPageToken: undefined, // No pagination needed for this test
+        create_url: "/projects/123456/flags",
+        last_url: "/projects/123456/flags",
+        first_url: "/projects/123456/flags",
+        count: 2,
+        total_pages: 1,
+        total_count: 2,
+        page: 1,
       } as T,
       error: null,
     })) as typeof client.request;
@@ -147,10 +154,11 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags handles pagination correctly",
   ): Promise<Result<T, Error>> => {
     callCount++;
 
-    if (callCount === 1 && path.includes("/flags") && !path.includes("page_token")) {
+    if (callCount === 1 && path.includes("/flags") && !path.includes("page=")) {
       // First page
       return Promise.resolve({
         data: {
+          url: "/projects/123456/flags",
           items: [
             {
               key: "flag_page1_1",
@@ -165,14 +173,21 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags handles pagination correctly",
               archived: false,
             },
           ],
-          nextPageToken: "page2_token",
+          create_url: "/projects/123456/flags",
+          last_url: "/projects/123456/flags?page=2",
+          first_url: "/projects/123456/flags",
+          count: 2,
+          total_pages: 2,
+          total_count: 3,
+          page: 1,
         } as T,
         error: null,
       });
-    } else if (callCount === 2 && path.includes("page_token=page2_token")) {
+    } else if (callCount === 2 && path.includes("page=2")) {
       // Second page
       return Promise.resolve({
         data: {
+          url: "/projects/123456/flags?page=2",
           items: [
             {
               key: "flag_page2_1",
@@ -181,7 +196,13 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags handles pagination correctly",
               archived: false,
             },
           ],
-          nextPageToken: undefined, // No more pages
+          create_url: "/projects/123456/flags",
+          last_url: "/projects/123456/flags?page=2",
+          first_url: "/projects/123456/flags",
+          count: 1,
+          total_pages: 2,
+          total_count: 3,
+          page: 2,
         } as T,
         error: null,
       });
