@@ -2,6 +2,8 @@
 
 ## Archived Feature Flag
 
+Documentation: https://docs.developers.optimizely.com/feature-experimentation/reference/archive_flags
+
 ### Request
 
 ```javascript
@@ -125,6 +127,8 @@ fetch(url, options)
 ```
 
 ## List Feature Flags
+
+Documentation: https://docs.developers.optimizely.com/feature-experimentation/reference/list_flags
 
 ### Request
 
@@ -260,6 +264,8 @@ fetch(url, options)
 
 ## Fetch a Single Flag
 
+Documentation: https://docs.developers.optimizely.com/feature-experimentation/reference/fetch_flag
+
 ### Request
 
 ```javascript
@@ -380,6 +386,8 @@ fetch(url, options)
 ```
 
 ## List Environments
+
+Documentation: https://docs.developers.optimizely.com/feature-experimentation/reference/list_environments-feature-experimentation
 
 ### Request
 
