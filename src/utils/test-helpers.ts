@@ -5,7 +5,7 @@
 
 import { assertEquals } from "@std/assert";
 import { EnvironmentConfig, OperationType } from "../types/config.ts";
-import { OptimizelyFlag } from "../modules/optimizely-client.ts";
+import { OptimizelyFlag } from "../types/optimizely.ts";
 import { AuditEvent, AuditEventType } from "../modules/audit-reporter.ts";
 
 /**
@@ -43,8 +43,8 @@ export function createMockFlag(overrides: Partial<OptimizelyFlag> = {}): Optimiz
     url: "/flags/test-flag",
     archived: false,
     environments: {
-      production: { enabled: true },
-      development: { enabled: false },
+      production: { key: "production", enabled: true },
+      development: { key: "development", enabled: false },
     },
     ...overrides,
   };

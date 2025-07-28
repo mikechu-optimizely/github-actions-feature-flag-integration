@@ -2,7 +2,8 @@
  * Unit tests for OptimizelyApiClient.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/testing/asserts.ts";
-import { OptimizelyApiClient, OptimizelyFlag } from "./optimizely-client.ts";
+import { OptimizelyApiClient } from "./optimizely-client.ts";
+import { OptimizelyFlag } from "../types/optimizely.ts";
 import { Result } from "../utils/try-catch.ts";
 
 // Mock dependencies
@@ -51,23 +52,17 @@ Deno.test("OptimizelyApiClient: failed request returns error", async () => {
   assert(result.error instanceof Error);
   assertEquals(result.data, null);
   assert(
-    String(result.error).includes("Optimizely API error: 401 Unauthorized"),
+    String(result.error).includes("Authentication failed: Invalid or expired API token"),
   );
 });
 
 Deno.test("OptimizelyApiClient: invalid path returns error", async () => {
   setEnv();
   const client = new OptimizelyApiClient("test-token");
-  let errorCaught = false;
-  try {
-    await client.request("invalid-path");
-  } catch (err) {
-    errorCaught = true;
-    assert(String(err).includes("API path must be a non-empty string"));
-  }
-  if (!errorCaught) {
-    throw new Error("Expected error to be thrown for invalid path");
-  }
+  const result = await client.request("invalid-path");
+  assertEquals(result.data, null);
+  assert(result.error instanceof Error);
+  assert(String(result.error).includes("API path must be a non-empty string"));
 });
 
 Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects on success", async () => {
@@ -136,6 +131,102 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns error on failure", asy
       `Expected error to be instance of Error, got ${result.error}`,
     );
   }
+});
+
+Deno.test("OptimizelyApiClient: token validation - valid token", async () => {
+  setEnv();
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response(JSON.stringify({ id: "123", name: "Test Project" }), {
+        status: 200,
+        statusText: "OK",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  const client = new OptimizelyApiClient("valid-test-token-12345");
+  const result = await client.validateTokenAccess();
+  assertEquals(result.data, true);
+  assertEquals(result.error, null);
+});
+
+Deno.test("OptimizelyApiClient: token validation - invalid token", async () => {
+  setEnv();
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response("Unauthorized", {
+        status: 401,
+        statusText: "Unauthorized",
+      }),
+    );
+  const client = new OptimizelyApiClient("invalid-token");
+  const result = await client.validateTokenAccess();
+  assertEquals(result.data, null);
+  assert(result.error instanceof Error);
+});
+
+Deno.test("OptimizelyApiClient: constructor validates token format", () => {
+  try {
+    new OptimizelyApiClient("");
+    assert(false, "Should have thrown error for empty token");
+  } catch (error) {
+    assert(error instanceof Error);
+    assert(error.message.includes("token is required"));
+  }
+});
+
+Deno.test("OptimizelyApiClient: constructor validates token length", () => {
+  try {
+    new OptimizelyApiClient("short");
+    assert(false, "Should have thrown error for short token");
+  } catch (error) {
+    assert(error instanceof Error);
+    assert(error.message.includes("too short"));
+  }
+});
+
+Deno.test("OptimizelyApiClient: archiveFeatureFlag success", async () => {
+  setEnv();
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response(JSON.stringify({ key: "test-flag", archived: true }), {
+        status: 200,
+        statusText: "OK",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.archiveFeatureFlag("test-flag");
+  assertEquals(result.data, true);
+  assertEquals(result.error, null);
+});
+
+Deno.test("OptimizelyApiClient: archiveFeatureFlag with invalid flag key", async () => {
+  setEnv();
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.archiveFeatureFlag("");
+  assertEquals(result.data, null);
+  assert(result.error instanceof Error);
+  assert(result.error.message.includes("Flag key is required"));
+});
+
+Deno.test("OptimizelyApiClient: rate limiting behavior", async () => {
+  setEnv();
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response(JSON.stringify({ data: "test" }), { status: 200 }),
+    );
+
+  const client = new OptimizelyApiClient("test-token", { maxRps: 2 });
+  const startTime = Date.now();
+
+  // Make 3 requests quickly
+  await client.request("/test1");
+  await client.request("/test2");
+  await client.request("/test3");
+
+  const elapsed = Date.now() - startTime;
+  // Should take at least 1000ms due to rate limiting (2 RPS means 500ms between requests)
+  assert(elapsed >= 1000, `Expected at least 1000ms, got ${elapsed}ms`);
 });
 
 globalThis.fetch = originalFetch;

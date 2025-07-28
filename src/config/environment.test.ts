@@ -2,6 +2,8 @@ import { assertEnvApiAvailable, loadEnvironment } from "./environment.ts";
 import { assertEquals, assertRejects } from "https://deno.land/std@0.204.0/testing/asserts.ts";
 
 Deno.test("loadEnvironmentVariables returns all variables when present", async () => {
+  // Store original values
+  const originalValues: Record<string, string | undefined> = {};
   const envVars = {
     OPTIMIZELY_API_TOKEN: "test-token-12345",
     OPTIMIZELY_PROJECT_ID: "123456",
@@ -10,22 +12,37 @@ Deno.test("loadEnvironmentVariables returns all variables when present", async (
     OPERATION: "cleanup",
     DRY_RUN: "true",
   };
+
+  // Store and set environment variables
   for (const [k, v] of Object.entries(envVars)) {
+    originalValues[k] = Deno.env.get(k);
     Deno.env.set(k, v);
   }
-  const result = await loadEnvironment();
-  assertEquals(result.OPTIMIZELY_API_TOKEN, "test-token-12345");
-  assertEquals(result.OPTIMIZELY_PROJECT_ID, "123456");
-  assertEquals(result.GITHUB_TOKEN, "gh-token-123");
-  assertEquals(result.ENVIRONMENT, "dev");
-  assertEquals(result.OPERATION, "cleanup");
-  assertEquals(result.DRY_RUN, true);
-  assertEquals(result.REPORTS_PATH, "reports");
-  assertEquals(result.LOG_LEVEL, "info");
-  assertEquals(result.API_RATE_LIMIT, 5);
-  assertEquals(result.API_TIMEOUT, 30000);
-  assertEquals(result.MAX_RETRIES, 3);
-  assertEquals(result.CONCURRENCY_LIMIT, 5);
+
+  try {
+    const result = await loadEnvironment();
+    assertEquals(result.OPTIMIZELY_API_TOKEN, "test-token-12345");
+    assertEquals(result.OPTIMIZELY_PROJECT_ID, "123456");
+    assertEquals(result.GITHUB_TOKEN, "gh-token-123");
+    assertEquals(result.ENVIRONMENT, "dev");
+    assertEquals(result.OPERATION, "cleanup");
+    assertEquals(result.DRY_RUN, true);
+    assertEquals(result.REPORTS_PATH, "reports");
+    assertEquals(result.LOG_LEVEL, "info");
+    assertEquals(result.API_RATE_LIMIT, 5);
+    assertEquals(result.API_TIMEOUT, 30000);
+    assertEquals(result.MAX_RETRIES, 3);
+    assertEquals(result.CONCURRENCY_LIMIT, 5);
+  } finally {
+    // Restore original values
+    for (const [k] of Object.entries(envVars)) {
+      if (originalValues[k] === undefined) {
+        Deno.env.delete(k);
+      } else {
+        Deno.env.set(k, originalValues[k]!);
+      }
+    }
+  }
 });
 
 Deno.test("loadEnvironmentVariables returns DRY_RUN as false when set to 'false'", async () => {
