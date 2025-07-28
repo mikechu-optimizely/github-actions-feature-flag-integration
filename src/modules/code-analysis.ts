@@ -1,4 +1,5 @@
-import { extname, join } from "https://deno.land/std@0.224.0/path/mod.ts";
+import { extname, globToRegExp, join } from "https://deno.land/std@0.224.0/path/mod.ts";
+import { CodeAnalysisConfig } from "../types/config.ts";
 
 /**
  * Represents a usage of a feature flag in the codebase.
@@ -31,6 +32,96 @@ export async function collectSourceFiles(rootDir: string): Promise<string[]> {
       files.push(fullPath);
     }
   }
+  return files;
+}
+
+/**
+ * Checks if a file path matches any of the given glob patterns.
+ * @param filePath File path to check
+ * @param patterns Array of glob patterns
+ * @returns True if the file matches any pattern
+ */
+function matchesPatterns(filePath: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => {
+    const regex = globToRegExp(pattern, { globstar: true });
+    // Normalize path separators for cross-platform compatibility
+    const normalizedPath = filePath.replace(/\\/g, "/");
+    return regex.test(normalizedPath);
+  });
+}
+
+/**
+ * Checks if a file should be included based on size constraints.
+ * @param filePath File path to check
+ * @param maxFileSize Maximum file size in bytes (optional)
+ * @returns True if the file should be included
+ */
+async function shouldIncludeFileBySize(
+  filePath: string,
+  maxFileSize?: number,
+): Promise<boolean> {
+  if (!maxFileSize) return true;
+
+  try {
+    const fileInfo = await Deno.stat(filePath);
+    return fileInfo.size <= maxFileSize;
+  } catch {
+    // If we can't get file stats, include the file
+    return true;
+  }
+}
+
+/**
+ * Recursively collects source files with configurable patterns and exclusions.
+ * @param rootDir Root directory to scan
+ * @param config Code analysis configuration with patterns and exclusions
+ * @returns Array of file paths that match the configuration
+ */
+export async function collectSourceFilesWithConfig(
+  rootDir: string,
+  config: CodeAnalysisConfig,
+): Promise<string[]> {
+  const files: string[] = [];
+
+  async function scanDirectory(currentDir: string): Promise<void> {
+    try {
+      for await (const entry of Deno.readDir(currentDir)) {
+        const fullPath = join(currentDir, entry.name);
+        const relativePath = fullPath.substring(rootDir.length + 1);
+
+        if (entry.isDirectory) {
+          // Check if directory should be excluded
+          if (!matchesPatterns(relativePath + "/", config.excludePatterns)) {
+            await scanDirectory(fullPath);
+          }
+        } else {
+          // Check exclusion patterns first
+          if (matchesPatterns(relativePath, config.excludePatterns)) {
+            continue;
+          }
+
+          // Check inclusion patterns if specified
+          if (config.includePatterns && config.includePatterns.length > 0) {
+            if (!matchesPatterns(relativePath, config.includePatterns)) {
+              continue;
+            }
+          }
+
+          // Check file size constraints
+          if (!(await shouldIncludeFileBySize(fullPath, config.maxFileSize))) {
+            continue;
+          }
+
+          files.push(fullPath);
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Warning: Could not read directory ${currentDir}: ${message}`);
+    }
+  }
+
+  await scanDirectory(rootDir);
   return files;
 }
 
@@ -206,4 +297,105 @@ export async function findFlagUsagesInCodebase(
     }
   }
   return result;
+}
+
+/**
+ * Enhanced version of flag search with configurable patterns and performance optimization.
+ * @param flagKeys Array of Optimizely flag keys
+ * @param config Code analysis configuration
+ * @returns Map of flag key to array of usages
+ */
+export async function findFlagUsagesWithConfig(
+  flagKeys: string[],
+  config: CodeAnalysisConfig,
+): Promise<Map<string, FlagUsage[]>> {
+  const files = await collectSourceFilesWithConfig(
+    config.workspaceRoot,
+    config,
+  );
+  const result = new Map<string, FlagUsage[]>();
+
+  // Initialize result map
+  for (const flag of flagKeys) {
+    result.set(flag, []);
+  }
+
+  // Process files with concurrency limit
+  const semaphore = new Semaphore(config.concurrencyLimit);
+  const promises = files.map((file) => {
+    return semaphore.acquire(async () => {
+      try {
+        const content = await Deno.readTextFile(file);
+        const lines = content.split("\n");
+        const fileExtension = extname(file);
+        let inBlockComment = false;
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const [isComment, nextBlock] = isCommentLine(
+            line,
+            inBlockComment,
+            fileExtension,
+          );
+          inBlockComment = nextBlock;
+          if (isComment) continue;
+
+          for (const flag of flagKeys) {
+            // Use word boundary to avoid partial matches
+            const regex = new RegExp(
+              `\\b${flag.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`,
+            );
+            if (regex.test(line)) {
+              result.get(flag)?.push({
+                file,
+                line: i + 1,
+                context: line.trim(),
+              });
+            }
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`Warning: Could not read file ${file}: ${message}`);
+      }
+    });
+  });
+
+  await Promise.all(promises);
+  return result;
+}
+
+/**
+ * Simple semaphore implementation for controlling concurrency.
+ */
+class Semaphore {
+  private permits: number;
+  private waitQueue: Array<() => void> = [];
+
+  constructor(permits: number) {
+    this.permits = permits;
+  }
+
+  acquire<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const tryAcquire = () => {
+        if (this.permits > 0) {
+          this.permits--;
+          fn()
+            .then(resolve)
+            .catch(reject)
+            .finally(() => {
+              this.permits++;
+              if (this.waitQueue.length > 0) {
+                const next = this.waitQueue.shift()!;
+                next();
+              }
+            });
+        } else {
+          this.waitQueue.push(tryAcquire);
+        }
+      };
+      tryAcquire();
+    });
+  }
 }

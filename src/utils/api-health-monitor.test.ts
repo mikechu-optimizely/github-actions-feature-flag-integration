@@ -1,5 +1,5 @@
-import { assertEquals, assert } from "https://deno.land/std@0.208.0/assert/mod.ts";
-import { ApiHealthMonitor, HealthStatus, createHttpHealthCheck } from "./api-health-monitor.ts";
+import { assert, assertEquals } from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { ApiHealthMonitor, createHttpHealthCheck, HealthStatus } from "./api-health-monitor.ts";
 
 Deno.test("ApiHealthMonitor - Initial state should be UNKNOWN", () => {
   const monitor = new ApiHealthMonitor("test-api");
@@ -18,12 +18,12 @@ Deno.test("ApiHealthMonitor - Should record successful health check", async () =
   });
 
   const healthyOperation = async () => {
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     return "success";
   };
 
   const result = await monitor.performHealthCheck(healthyOperation);
-  
+
   assertEquals(result.status, HealthStatus.HEALTHY);
   assertEquals(result.error, null);
   assert(result.responseTimeMs >= 50);
@@ -45,12 +45,12 @@ Deno.test("ApiHealthMonitor - Should record failed health check", async () => {
   });
 
   const failingOperation = async () => {
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     throw new Error("Service unavailable");
   };
 
   const result = await monitor.performHealthCheck(failingOperation);
-  
+
   assertEquals(result.status, HealthStatus.UNHEALTHY);
   assertEquals(result.error, "Service unavailable");
   assert(result.responseTimeMs >= 50);
@@ -72,12 +72,12 @@ Deno.test("ApiHealthMonitor - Should determine DEGRADED status from slow respons
   });
 
   const slowOperation = async () => {
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     return "success";
   };
 
   const result = await monitor.performHealthCheck(slowOperation);
-  
+
   assertEquals(result.status, HealthStatus.DEGRADED);
   assertEquals(result.error, null);
   assert(result.responseTimeMs >= 150);
@@ -96,12 +96,12 @@ Deno.test("ApiHealthMonitor - Should determine UNHEALTHY status from very slow r
   });
 
   const verySlowOperation = async () => {
-    await new Promise(resolve => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 250));
     return "success";
   };
 
   const result = await monitor.performHealthCheck(verySlowOperation);
-  
+
   assertEquals(result.status, HealthStatus.UNHEALTHY);
   assertEquals(result.error, null);
   assert(result.responseTimeMs >= 250);
@@ -120,12 +120,12 @@ Deno.test("ApiHealthMonitor - Should calculate average response time", async () 
   });
 
   const fastOperation = async () => {
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     return "success";
   };
 
   const slowOperation = async () => {
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     return "success";
   };
 
@@ -184,7 +184,7 @@ Deno.test("ApiHealthMonitor - Should reset statistics", async () => {
   assertEquals(stats.totalChecks, 1);
 
   monitor.reset();
-  
+
   stats = monitor.getHealthStats();
   assertEquals(stats.totalChecks, 0);
   assertEquals(stats.currentStatus, HealthStatus.UNKNOWN);
@@ -193,10 +193,10 @@ Deno.test("ApiHealthMonitor - Should reset statistics", async () => {
 Deno.test("createHttpHealthCheck - Should create working health check function", async () => {
   // This test would require a real HTTP endpoint, so we'll just test the function creation
   const healthCheck = createHttpHealthCheck("https://api.example.com/health");
-  
+
   // Verify it's a function
   assertEquals(typeof healthCheck, "function");
-  
+
   // We can't actually call it without a real endpoint, but we can verify the structure
   assert(healthCheck.constructor.name === "AsyncFunction");
 });

@@ -1,6 +1,14 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/testing/asserts.ts";
-import { findFlagUsagesInCodebase } from "./code-analysis.ts";
+import {
+  assertEquals,
+  assertStringIncludes,
+} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import {
+  collectSourceFilesWithConfig,
+  findFlagUsagesInCodebase,
+  findFlagUsagesWithConfig,
+} from "./code-analysis.ts";
 import { join } from "https://deno.land/std@0.224.0/path/mod.ts";
+import { CodeAnalysisConfig } from "../types/config.ts";
 
 /**
  * Helper to create a temporary directory with test files.
@@ -176,5 +184,167 @@ Deno.test("findFlagUsagesInCodebase correctly identifies flag usage context", as
       ),
       true,
     );
+  });
+});
+
+Deno.test("collectSourceFilesWithConfig respects exclude patterns", async () => {
+  const files = {
+    "src/main.ts": "const code = true;",
+    "src/utils.ts": "const helper = true;",
+    "tests/main.test.ts": "const test = true;",
+    "docs/README.md": "# Documentation",
+    "node_modules/package/index.js": "module.exports = {};",
+    "dist/bundle.js": "var bundle = {};",
+  };
+
+  const config: CodeAnalysisConfig = {
+    workspaceRoot: "/tmp",
+    excludePatterns: ["**/*.test.ts", "**/node_modules/**", "**/dist/**", "**/*.md"],
+    languages: ["typescript", "javascript"],
+    concurrencyLimit: 5,
+    maxFileSize: 1024 * 1024,
+  };
+
+  await withTempFiles(files, async (dir) => {
+    const result = await collectSourceFilesWithConfig(dir, {
+      ...config,
+      workspaceRoot: dir,
+    });
+
+    // Should include main.ts and utils.ts
+    assertEquals(result.filter((f) => f.endsWith("main.ts")).length, 1);
+    assertEquals(result.filter((f) => f.endsWith("utils.ts")).length, 1);
+
+    // Should exclude test files, docs, node_modules, and dist
+    assertEquals(result.filter((f) => f.includes("test")).length, 0);
+    assertEquals(result.filter((f) => f.includes("node_modules")).length, 0);
+    assertEquals(result.filter((f) => f.includes("dist")).length, 0);
+    assertEquals(result.filter((f) => f.endsWith(".md")).length, 0);
+  });
+});
+
+Deno.test("collectSourceFilesWithConfig respects include patterns", async () => {
+  const files = {
+    "src/main.ts": "const code = true;",
+    "src/utils.js": "const helper = true;",
+    "src/data.json": '{ "key": "value" }',
+    "src/styles.css": "body { margin: 0; }",
+  };
+
+  const config: CodeAnalysisConfig = {
+    workspaceRoot: "/tmp",
+    excludePatterns: [],
+    includePatterns: ["**/*.ts", "**/*.js"], // Only TypeScript and JavaScript files
+    languages: ["typescript", "javascript"],
+    concurrencyLimit: 5,
+    maxFileSize: 1024 * 1024,
+  };
+
+  await withTempFiles(files, async (dir) => {
+    const result = await collectSourceFilesWithConfig(dir, {
+      ...config,
+      workspaceRoot: dir,
+    });
+
+    // Should include .ts and .js files
+    assertEquals(result.filter((f) => f.endsWith("main.ts")).length, 1);
+    assertEquals(result.filter((f) => f.endsWith("utils.js")).length, 1);
+
+    // Should exclude .json and .css files
+    assertEquals(result.filter((f) => f.endsWith(".json")).length, 0);
+    assertEquals(result.filter((f) => f.endsWith(".css")).length, 0);
+  });
+});
+
+Deno.test("findFlagUsagesWithConfig uses configurable patterns", async () => {
+  const files = {
+    "src/main.ts": `
+      const used = isEnabled('feature_foo');
+      if (isEnabled('feature_bar')) {
+        doSomething();
+      }
+    `,
+    "tests/main.test.ts": `
+      // This should be excluded
+      const test = isEnabled('feature_foo');
+    `,
+    "docs/README.md": `
+      This mentions feature_foo but should be excluded
+    `,
+  };
+
+  const config: CodeAnalysisConfig = {
+    workspaceRoot: "/tmp",
+    excludePatterns: ["**/*.test.ts", "**/*.md", "**/tests/**", "**/docs/**"],
+    languages: ["typescript"],
+    concurrencyLimit: 2,
+    maxFileSize: 1024 * 1024,
+  };
+
+  const flagKeys = ["feature_foo", "feature_bar"];
+  await withTempFiles(files, async (dir) => {
+    const result = await findFlagUsagesWithConfig(flagKeys, {
+      ...config,
+      workspaceRoot: dir,
+    });
+
+    // Should find flags in main.ts but not in excluded files
+    assertEquals(result.get("feature_foo")?.length, 1);
+    assertEquals(result.get("feature_bar")?.length, 1);
+
+    // All usages should be from main.ts (not test files or docs)
+    const allUsages = [
+      ...(result.get("feature_foo") || []),
+      ...(result.get("feature_bar") || []),
+    ];
+
+    for (const usage of allUsages) {
+      assertStringIncludes(usage.file, "main.ts");
+    }
+  });
+});
+
+Deno.test("findFlagUsagesWithConfig handles concurrency limits", async () => {
+  const files: Record<string, string> = {};
+
+  // Create multiple files to test concurrency
+  for (let i = 0; i < 10; i++) {
+    files[`file${i}.ts`] = `
+      const flag${i} = isEnabled('test_flag');
+      if (isEnabled('test_flag')) {
+        console.log('Flag ${i} is enabled');
+      }
+    `;
+  }
+
+  const config: CodeAnalysisConfig = {
+    workspaceRoot: "/tmp",
+    excludePatterns: [],
+    languages: ["typescript"],
+    concurrencyLimit: 3, // Limit to 3 concurrent operations
+    maxFileSize: 1024 * 1024,
+  };
+
+  const flagKeys = ["test_flag"];
+  await withTempFiles(files, async (dir) => {
+    const startTime = Date.now();
+    const result = await findFlagUsagesWithConfig(flagKeys, {
+      ...config,
+      workspaceRoot: dir,
+    });
+    const endTime = Date.now();
+
+    // Should find the flag in all files (2 usages per file = 20 total)
+    assertEquals(result.get("test_flag")?.length, 20);
+
+    // Test completed within reasonable time (concurrency should help)
+    const duration = endTime - startTime;
+    console.debug(`Concurrent processing took ${duration}ms`);
+
+    // Verify that all usages have proper context
+    const usages = result.get("test_flag") || [];
+    for (const usage of usages) {
+      assertStringIncludes(usage.context, "test_flag");
+    }
   });
 });

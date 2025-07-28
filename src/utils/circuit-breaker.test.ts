@@ -8,9 +8,9 @@ Deno.test("CircuitBreaker - Initial state should be CLOSED", () => {
 });
 
 Deno.test("CircuitBreaker - Should open after failure threshold", async () => {
-  const cb = new CircuitBreaker("test-circuit", { 
-    failureThreshold: 2, 
-    timeoutMs: 100 
+  const cb = new CircuitBreaker("test-circuit", {
+    failureThreshold: 2,
+    timeoutMs: 100,
   });
 
   const failingOperation = async () => {
@@ -28,10 +28,10 @@ Deno.test("CircuitBreaker - Should open after failure threshold", async () => {
 });
 
 Deno.test("CircuitBreaker - Should transition to HALF_OPEN after timeout", async () => {
-  const cb = new CircuitBreaker("test-circuit", { 
-    failureThreshold: 1, 
+  const cb = new CircuitBreaker("test-circuit", {
+    failureThreshold: 1,
     resetTimeoutMs: 50,
-    timeoutMs: 100 
+    timeoutMs: 100,
   });
 
   const failingOperation = async () => {
@@ -43,7 +43,7 @@ Deno.test("CircuitBreaker - Should transition to HALF_OPEN after timeout", async
   assertEquals(cb.getState(), CircuitBreakerState.OPEN);
 
   // Wait for reset timeout
-  await new Promise(resolve => setTimeout(resolve, 60));
+  await new Promise((resolve) => setTimeout(resolve, 60));
 
   // Next request should transition to HALF_OPEN
   const successOperation = async () => "success";
@@ -53,9 +53,9 @@ Deno.test("CircuitBreaker - Should transition to HALF_OPEN after timeout", async
 });
 
 Deno.test("CircuitBreaker - Should not count non-critical errors", async () => {
-  const cb = new CircuitBreaker("test-circuit", { 
+  const cb = new CircuitBreaker("test-circuit", {
     failureThreshold: 2,
-    isErrorCritical: isApiErrorCritical 
+    isErrorCritical: isApiErrorCritical,
   });
 
   const clientErrorOperation = async () => {
@@ -66,26 +66,26 @@ Deno.test("CircuitBreaker - Should not count non-critical errors", async () => {
   await assertRejects(() => cb.execute(clientErrorOperation));
   await assertRejects(() => cb.execute(clientErrorOperation));
   await assertRejects(() => cb.execute(clientErrorOperation));
-  
+
   // Circuit should still be closed
   assertEquals(cb.getState(), CircuitBreakerState.CLOSED);
 });
 
 Deno.test("CircuitBreaker - Should handle timeout", async () => {
-  const cb = new CircuitBreaker("test-circuit", { 
-    failureThreshold: 1, 
-    timeoutMs: 50 
+  const cb = new CircuitBreaker("test-circuit", {
+    failureThreshold: 1,
+    timeoutMs: 50,
   });
 
   const slowOperation = async () => {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     return "success";
   };
 
   await assertRejects(
     () => cb.execute(slowOperation),
     Error,
-    "Operation timed out after 50ms"
+    "Operation timed out after 50ms",
   );
 });
 
