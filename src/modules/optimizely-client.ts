@@ -4,6 +4,22 @@ import * as retry from "../utils/retry.ts";
 import * as validation from "../utils/validation.ts";
 import { Result } from "../utils/try-catch.ts";
 import {
+  CircuitBreaker,
+  CircuitBreakerState,
+  isApiErrorCritical,
+} from "../utils/circuit-breaker.ts";
+import {
+  ApiHealthMonitor,
+  createAuthenticatedHealthCheck,
+  HealthStatus,
+} from "../utils/api-health-monitor.ts";
+import {
+  ApiFallbackManager,
+  createDefaultFallbackConfig,
+  FallbackStrategy,
+} from "../utils/api-fallback.ts";
+import { createDefaultRecoveryConfig, ErrorRecoveryManager } from "../utils/error-recovery.ts";
+import {
   FlagConsistencyValidation,
   OptimizelyEnvironment,
   OptimizelyEnvironmentListItem,
@@ -51,6 +67,12 @@ export class OptimizelyApiClient {
   private lastRequestTime: number = 0;
   private tokenValidated: boolean = false;
 
+  // Enhanced error handling components
+  private readonly circuitBreaker: CircuitBreaker<unknown>;
+  private readonly healthMonitor: ApiHealthMonitor;
+  private readonly fallbackManager: ApiFallbackManager;
+  private readonly errorRecoveryManager: ErrorRecoveryManager<unknown>;
+
   /**
    * Creates a new OptimizelyApiClient instance.
    * @param token API token for authentication
@@ -64,6 +86,52 @@ export class OptimizelyApiClient {
     this.maxRetries = Math.max(0, options.maxRetries ?? 3);
     this.timeoutMs = Math.max(1000, options.timeoutMs ?? 30000);
     this.enableGracefulDegradation = options.enableGracefulDegradation ?? true;
+
+    // Initialize enhanced error handling components
+    this.circuitBreaker = new CircuitBreaker(
+      "optimizely-api-client",
+      {
+        failureThreshold: 5,
+        resetTimeoutMs: 60000, // 1 minute
+        timeoutMs: this.timeoutMs,
+        isErrorCritical: isApiErrorCritical,
+      },
+    );
+
+    this.healthMonitor = new ApiHealthMonitor(
+      "optimizely-api",
+      {
+        degradedThresholdMs: 5000, // 5 seconds
+        unhealthyThresholdMs: 10000, // 10 seconds
+      },
+    );
+
+    this.fallbackManager = new ApiFallbackManager("optimizely-api-fallback");
+
+    this.errorRecoveryManager = new ErrorRecoveryManager(
+      "optimizely-api-recovery",
+      createDefaultRecoveryConfig({
+        fallbackConfig: createDefaultFallbackConfig({
+          getDefaultValues: async () => {
+            // Return empty data structures for safe defaults
+            return null;
+          },
+          getOfflineData: async () => {
+            // Return cached data or safe defaults in offline mode
+            return null;
+          },
+          enableGracefulDegradation: this.enableGracefulDegradation,
+        }),
+      }),
+    );
+
+    logger.debug("OptimizelyApiClient initialized with enhanced error handling", {
+      baseUrl: this.baseUrl,
+      maxRps: this.maxRps,
+      maxRetries: this.maxRetries,
+      timeoutMs: this.timeoutMs,
+      enableGracefulDegradation: this.enableGracefulDegradation,
+    });
   }
 
   /**
@@ -846,5 +914,213 @@ export class OptimizelyApiClient {
     }
 
     this.lastRequestTime = Date.now();
+  }
+
+  // Enhanced Error Handling and Monitoring Methods
+
+  /**
+   * Perform a health check on the Optimizely API
+   * @returns Health check result
+   */
+  async performHealthCheck(): Promise<Result<HealthStatus, Error>> {
+    try {
+      const healthCheckFn = createAuthenticatedHealthCheck(
+        `${this.baseUrl}/projects`,
+        this.token,
+      );
+
+      const result = await this.healthMonitor.performHealthCheck(healthCheckFn);
+
+      logger.debug("API health check completed", {
+        status: result.status,
+        responseTimeMs: result.responseTimeMs,
+        error: result.error,
+      });
+
+      return { data: result.status, error: null };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Health check failed", { error: errorMsg });
+      return { data: null, error: new Error(`Health check failed: ${errorMsg}`) };
+    }
+  }
+
+  /**
+   * Get comprehensive API health statistics
+   * @returns Health statistics
+   */
+  getHealthStats() {
+    return this.healthMonitor.getHealthStats();
+  }
+
+  /**
+   * Get circuit breaker statistics
+   * @returns Circuit breaker statistics
+   */
+  getCircuitBreakerStats() {
+    return this.circuitBreaker.getStats();
+  }
+
+  /**
+   * Get error recovery statistics
+   * @returns Error recovery statistics
+   */
+  getErrorRecoveryStats() {
+    return {
+      circuitBreaker: this.errorRecoveryManager.getCircuitBreakerStats(),
+      health: this.errorRecoveryManager.getHealthStats(),
+      fallback: this.errorRecoveryManager.getFallbackStats(),
+    };
+  }
+
+  /**
+   * Reset all error handling mechanisms (circuit breaker, health monitor, fallback cache)
+   */
+  resetErrorHandling(): void {
+    this.circuitBreaker.reset();
+    this.healthMonitor.reset();
+    this.fallbackManager.clearAllCache();
+    this.errorRecoveryManager.reset();
+
+    logger.info("All error handling mechanisms reset");
+  }
+
+  /**
+   * Check if the API is currently available (circuit breaker is closed)
+   * @returns True if API is available
+   */
+  isApiAvailable(): boolean {
+    return this.circuitBreaker.isAcceptingRequests() && this.healthMonitor.isAvailable();
+  }
+
+  /**
+   * Force circuit breaker to open state (for testing or emergency scenarios)
+   */
+  forceCircuitBreakerOpen(): void {
+    this.circuitBreaker.forceOpen();
+    logger.warn("Circuit breaker manually forced to OPEN state");
+  }
+
+  /**
+   * Execute a request with comprehensive error recovery
+   * @param operationKey Unique key for the operation
+   * @param operation Operation to execute
+   * @returns Recovery result
+   */
+  async executeWithRecovery<T>(
+    operationKey: string,
+    operation: () => Promise<T>,
+  ): Promise<Result<T, Error>> {
+    try {
+      const recoveryResult = await this.errorRecoveryManager.executeWithRecovery(
+        operationKey,
+        operation,
+      );
+
+      if (recoveryResult.recovered && recoveryResult.data !== null) {
+        logger.info("Operation recovered successfully", {
+          operationKey,
+          strategy: recoveryResult.successfulStrategy,
+          attempts: recoveryResult.recoveryAttempts,
+          totalTimeMs: recoveryResult.totalTimeMs,
+        });
+        return { data: recoveryResult.data as T, error: null };
+      } else {
+        logger.error("Operation recovery failed", {
+          operationKey,
+          attemptedStrategies: recoveryResult.attemptedStrategies,
+          attempts: recoveryResult.recoveryAttempts,
+          totalTimeMs: recoveryResult.totalTimeMs,
+          error: recoveryResult.error?.message,
+        });
+        return {
+          data: null,
+          error: recoveryResult.error || new Error("Recovery failed with unknown error"),
+        };
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Error in executeWithRecovery", { operationKey, error: errorMsg });
+      return { data: null, error: new Error(`Recovery execution failed: ${errorMsg}`) };
+    }
+  }
+
+  /**
+   * Get all feature flags with enhanced error recovery
+   * @returns Result with feature flags or error with fallback handling
+   */
+  async getAllFeatureFlagsWithRecovery(): Promise<Result<OptimizelyFlag[], Error>> {
+    return await this.executeWithRecovery(
+      "getAllFeatureFlags",
+      () =>
+        this.getAllFeatureFlags().then((result) => {
+          if (result.error) {
+            throw result.error;
+          }
+          return result.data!;
+        }),
+    );
+  }
+
+  /**
+   * Archive feature flags with enhanced error recovery
+   * @param flagKeys Flag keys to archive
+   * @returns Result with archived flags or error with fallback handling
+   */
+  async archiveFeatureFlagsWithRecovery(
+    flagKeys: string[] | string,
+  ): Promise<Result<Record<string, OptimizelyFlag>, Error>> {
+    return await this.executeWithRecovery(
+      `archiveFeatureFlags-${Array.isArray(flagKeys) ? flagKeys.join(",") : flagKeys}`,
+      () =>
+        this.archiveFeatureFlags(flagKeys).then((result) => {
+          if (result.error) {
+            throw result.error;
+          }
+          return result.data!;
+        }),
+    );
+  }
+
+  /**
+   * Get comprehensive API status report
+   * @returns API status report
+   */
+  getApiStatusReport() {
+    const healthStats = this.getHealthStats();
+    const circuitBreakerStats = this.getCircuitBreakerStats();
+    const fallbackStats = this.fallbackManager.getCacheStats();
+
+    return {
+      timestamp: Date.now(),
+      health: {
+        status: healthStats.currentStatus,
+        uptime: healthStats.uptime,
+        averageResponseTime: healthStats.averageResponseTimeMs,
+        successRate: healthStats.successRate,
+        totalChecks: healthStats.totalChecks,
+        lastCheckTime: healthStats.lastCheckTime,
+      },
+      circuitBreaker: {
+        state: circuitBreakerStats.state,
+        failureCount: circuitBreakerStats.failureCount,
+        successCount: circuitBreakerStats.successCount,
+        totalRequests: circuitBreakerStats.totalRequests,
+        lastFailureTime: circuitBreakerStats.lastFailureTime,
+      },
+      fallback: {
+        totalEntries: fallbackStats.totalEntries,
+        oldestEntryAge: fallbackStats.oldestEntryAge,
+        newestEntryAge: fallbackStats.newestEntryAge,
+      },
+      api: {
+        isAvailable: this.isApiAvailable(),
+        tokenValidated: this.tokenValidated,
+        baseUrl: this.baseUrl,
+        maxRps: this.maxRps,
+        timeoutMs: this.timeoutMs,
+        gracefulDegradation: this.enableGracefulDegradation,
+      },
+    };
   }
 }
