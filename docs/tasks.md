@@ -93,12 +93,6 @@ TODO: Tasks that have been completed
   - [x] Create API health monitoring and status checks
   - [x] Implement graceful degradation strategies
   - [x] Add comprehensive error recovery procedures
-- TODO: Implement API usage monitoring and metrics collection
-  - [ ] Track API call frequency and response times
-  - [ ] Monitor rate limit usage and throttling
-  - [ ] Implement usage analytics and reporting
-  - [ ] Add performance metrics collection
-  - [ ] Create API usage optimization recommendations
 
 ## Phase 3: Codebase Search & Flag Usage Analysis
 - DONE: Search codebase for each Optimizely flag key (string search, context-aware)
@@ -107,12 +101,11 @@ TODO: Tasks that have been completed
   - [x] Add context-aware search to distinguish actual usage from comments
   - [x] Implement multi-file search with performance optimization
   - [x] Add configurable search patterns and exclusions
-- WIP: Exclude comments, test fixtures, and documentation from search
-  - [ ] Implement comment detection for multiple languages
-  - [ ] Add test file exclusion patterns (*.test.*, *.spec.*, __tests__)
-  - [ ] Exclude documentation files (*.md, docs/, README files)
-  - [ ] Filter out configuration and build files
-  - [ ] Implement configurable exclusion patterns
+- DONE: Exclude comments, test fixtures, and documentation from search
+  - [x] Implement comment detection for multiple languages
+  - [x] Exclude documentation files (*.md, docs/, README files)
+  - [x] Filter out configuration and build files
+  - [x] Implement configurable exclusion patterns
 - TODO: Report or archive flags not found in code (with audit logging)
   - [ ] Generate unused flag identification reports
   - [ ] Implement flag archiving recommendations
@@ -131,12 +124,6 @@ TODO: Tasks that have been completed
   - [ ] Optimize memory usage for large repository scanning
   - [ ] Add progress tracking and incremental processing
   - [ ] Implement smart filtering to reduce scan scope
-- TODO: Add support for dynamic flag key detection and annotation patterns
-  - [ ] Detect dynamically constructed flag keys
-  - [ ] Implement code annotation parsing for flag declarations
-  - [ ] Add support for flag key variables and constants
-  - [ ] Create developer guidelines for dynamic flag usage
-  - [ ] Implement smart pattern recognition for flag variations
 
 ## Phase 4: Code Analysis & Multi-Language Support
 - TODO: Develop code analysis module for advanced flag reference extraction

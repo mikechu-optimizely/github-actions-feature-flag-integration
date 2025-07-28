@@ -53,9 +53,9 @@ Deno.test("findFlagUsagesInCodebase finds usages and ignores comments", async ()
         doSomething();
       }
     `,
-    "ignore.test.ts": `
-      // should not be scanned
-      const t = 'feature_foo';
+    "helper.test.ts": `
+      // Test file - now included in search
+      const testFlag = 'feature_test';
     `,
     "README.md": `feature_foo should not be found here`,
   };
