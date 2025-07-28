@@ -3,7 +3,11 @@ import * as logger from "../utils/logger.ts";
 import * as retry from "../utils/retry.ts";
 import * as validation from "../utils/validation.ts";
 import { Result } from "../utils/try-catch.ts";
-import { OptimizelyFlag, OptimizelyProject } from "../types/optimizely.ts";
+import {
+  OptimizelyFlag,
+  OptimizelyPaginatedResponse,
+  OptimizelyProject,
+} from "../types/optimizely.ts";
 
 /**
  * Options for OptimizelyApiClient
@@ -227,6 +231,7 @@ export class OptimizelyApiClient {
 
   /**
    * Fetches all feature flags for the configured Optimizely project.
+   * Handles API pagination to ensure all flags are retrieved.
    * @returns Result object with array of OptimizelyFlag or error
    */
   async getAllFeatureFlags(): Promise<Result<OptimizelyFlag[], Error>> {
@@ -241,24 +246,64 @@ export class OptimizelyApiClient {
         };
       }
 
-      const path = `/flags/v1/projects/${encodeURIComponent(projectId)}/flags`;
-      const result = await this.request<{ items: OptimizelyFlag[] }>(path);
+      const allFlags: OptimizelyFlag[] = [];
+      let nextPageToken: string | undefined;
+      let pageCount = 0;
 
-      if (result.error) {
-        logger.error("Failed to fetch feature flags", {
+      do {
+        // Construct path with pagination support
+        const basePath = `/flags/v1/projects/${encodeURIComponent(projectId)}/flags`;
+        const path = nextPageToken
+          ? `${basePath}?page_token=${encodeURIComponent(nextPageToken)}`
+          : basePath;
+
+        const result = await this.request<OptimizelyPaginatedResponse<OptimizelyFlag>>(path);
+
+        if (result.error) {
+          logger.error("Failed to fetch feature flags", {
+            projectId,
+            page: pageCount,
+            error: result.error.message,
+          });
+          return { data: null, error: result.error };
+        }
+
+        const response = result.data;
+        const flags = response?.items ?? [];
+        allFlags.push(...flags);
+
+        nextPageToken = response?.nextPageToken;
+        pageCount++;
+
+        logger.debug("Fetched feature flags page", {
           projectId,
-          error: result.error.message,
+          page: pageCount,
+          flagsOnPage: flags.length,
+          totalFlagsSoFar: allFlags.length,
+          hasNextPage: !!nextPageToken,
         });
-        return { data: null, error: result.error };
-      }
 
-      const flags = result.data?.items ?? [];
-      logger.info(`Successfully fetched ${flags.length} feature flags`, {
-        projectId,
-        flagCount: flags.length,
-      });
+        // Safety check to prevent infinite loops
+        if (pageCount > 100) {
+          logger.warn("Reached maximum page limit while fetching flags", {
+            projectId,
+            pageCount,
+            totalFlags: allFlags.length,
+          });
+          break;
+        }
+      } while (nextPageToken);
 
-      return { data: flags, error: null };
+      logger.info(
+        `Successfully fetched ${allFlags.length} feature flags across ${pageCount} pages`,
+        {
+          projectId,
+          flagCount: allFlags.length,
+          pageCount,
+        },
+      );
+
+      return { data: allFlags, error: null };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       logger.error("Error in getAllFeatureFlags", { error: errorMsg });

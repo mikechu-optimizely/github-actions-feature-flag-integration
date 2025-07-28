@@ -90,6 +90,7 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns array of flag objects 
             archived: false,
           },
         ],
+        nextPageToken: undefined, // No pagination needed for this test
       } as T,
       error: null,
     })) as typeof client.request;
@@ -131,6 +132,85 @@ Deno.test("OptimizelyApiClient.getAllFeatureFlags returns error on failure", asy
       `Expected error to be instance of Error, got ${result.error}`,
     );
   }
+});
+
+Deno.test("OptimizelyApiClient.getAllFeatureFlags handles pagination correctly", async () => {
+  const client = new OptimizelyApiClient("test-token", {
+    baseUrl: "http://localhost:8080/mock-api",
+  });
+
+  let callCount = 0;
+  // Mock the request method to simulate pagination
+  client.request = (<T = unknown>(
+    path: string,
+    _init?: RequestInit,
+  ): Promise<Result<T, Error>> => {
+    callCount++;
+
+    if (callCount === 1 && path.includes("/flags") && !path.includes("page_token")) {
+      // First page
+      return Promise.resolve({
+        data: {
+          items: [
+            {
+              key: "flag_page1_1",
+              name: "Flag Page 1-1",
+              url: "/flags/flag_page1_1",
+              archived: false,
+            },
+            {
+              key: "flag_page1_2",
+              name: "Flag Page 1-2",
+              url: "/flags/flag_page1_2",
+              archived: false,
+            },
+          ],
+          nextPageToken: "page2_token",
+        } as T,
+        error: null,
+      });
+    } else if (callCount === 2 && path.includes("page_token=page2_token")) {
+      // Second page
+      return Promise.resolve({
+        data: {
+          items: [
+            {
+              key: "flag_page2_1",
+              name: "Flag Page 2-1",
+              url: "/flags/flag_page2_1",
+              archived: false,
+            },
+          ],
+          nextPageToken: undefined, // No more pages
+        } as T,
+        error: null,
+      });
+    }
+
+    return Promise.resolve({
+      data: null,
+      error: new Error("Unexpected API call"),
+    });
+  }) as typeof client.request;
+
+  const result = await client.getAllFeatureFlags();
+
+  if (!result.data || result.data.length !== 3) {
+    throw new Error(`Expected 3 flags from pagination, got ${JSON.stringify(result.data)}`);
+  }
+
+  if (callCount !== 2) {
+    throw new Error(`Expected 2 API calls for pagination, got ${callCount}`);
+  }
+
+  const expectedKeys = ["flag_page1_1", "flag_page1_2", "flag_page2_1"];
+  const actualKeys = result.data.map((f) => f.key);
+
+  if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+    throw new Error(`Expected keys ${expectedKeys}, got ${actualKeys}`);
+  }
+
+  assertEquals(result.error, null);
 });
 
 Deno.test("OptimizelyApiClient: token validation - valid token", async () => {
