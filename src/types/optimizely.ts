@@ -106,6 +106,30 @@ export interface OptimizelyEnvironment {
 }
 
 /**
+ * Optimizely Environment from environments list API
+ */
+export interface OptimizelyEnvironmentListItem {
+  /** Environment key */
+  key: string;
+  /** Environment name */
+  name: string;
+  /** Whether the environment is archived */
+  archived: boolean;
+  /** Priority level */
+  priority: number;
+  /** Account ID */
+  account_id: number;
+  /** Project ID */
+  project_id: number;
+  /** User role */
+  role: string;
+  /** Environment ID */
+  id: number;
+  /** Whether the environment has restricted permissions */
+  has_restricted_permissions: boolean;
+}
+
+/**
  * Optimizely Project object
  */
 export interface OptimizelyProject {

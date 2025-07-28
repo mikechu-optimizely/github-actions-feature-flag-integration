@@ -71,17 +71,31 @@ Deno.test("loadEnvironmentVariables ignores extra environment variables", async 
 });
 
 Deno.test("loadEnvironmentVariables throws if missing required variable", async () => {
-  Deno.env.delete("OPTIMIZELY_API_TOKEN");
-  Deno.env.set("OPTIMIZELY_PROJECT_ID", "123456");
-  Deno.env.set("GITHUB_TOKEN", "gh");
-  Deno.env.set("ENVIRONMENT", "dev");
-  Deno.env.set("OPERATION", "cleanup");
-  Deno.env.set("DRY_RUN", "true");
-  await assertRejects(
-    () => loadEnvironment(),
-    Error,
-    "Missing required environment variables: OPTIMIZELY_API_TOKEN",
-  );
+  // Save current environment state
+  const currentToken = Deno.env.get("OPTIMIZELY_API_TOKEN");
+
+  try {
+    // Clear the required token and set other vars
+    Deno.env.delete("OPTIMIZELY_API_TOKEN");
+    Deno.env.set("OPTIMIZELY_PROJECT_ID", "123456");
+    Deno.env.set("GITHUB_TOKEN", "gh");
+    Deno.env.set("ENVIRONMENT", "dev");
+    Deno.env.set("OPERATION", "cleanup");
+    Deno.env.set("DRY_RUN", "true");
+
+    await assertRejects(
+      () => loadEnvironment(),
+      Error,
+      "Missing required environment variables: OPTIMIZELY_API_TOKEN",
+    );
+  } finally {
+    // Restore original environment state
+    if (currentToken) {
+      Deno.env.set("OPTIMIZELY_API_TOKEN", currentToken);
+    } else {
+      Deno.env.delete("OPTIMIZELY_API_TOKEN");
+    }
+  }
 });
 
 Deno.test("assertEnvApiAvailable does not throw in Deno", () => {

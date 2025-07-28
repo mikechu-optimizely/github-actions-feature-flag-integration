@@ -4,6 +4,7 @@ import * as retry from "../utils/retry.ts";
 import * as validation from "../utils/validation.ts";
 import { Result } from "../utils/try-catch.ts";
 import {
+  OptimizelyEnvironmentListItem,
   OptimizelyFlag,
   OptimizelyPaginatedResponse,
   OptimizelyProject,
@@ -316,11 +317,97 @@ export class OptimizelyApiClient {
   }
 
   /**
-   * Archives a feature flag by its key.
+   * Archives one or more feature flags by their keys.
+   * @param flagKeys Array of flag keys to archive, or single flag key
+   * @returns Result object with archived flags data or error
+   */
+  async archiveFeatureFlags(
+    flagKeys: string[] | string,
+  ): Promise<Result<Record<string, OptimizelyFlag>, Error>> {
+    try {
+      const keysArray = Array.isArray(flagKeys) ? flagKeys : [flagKeys];
+
+      if (keysArray.length === 0) {
+        return {
+          data: null,
+          error: new Error("At least one flag key is required"),
+        };
+      }
+
+      // Validate all flag keys
+      for (const key of keysArray) {
+        if (!key || typeof key !== "string") {
+          return {
+            data: null,
+            error: new Error("All flag keys must be non-empty strings"),
+          };
+        }
+      }
+
+      const env = await loadEnvironment();
+      const projectId = env.OPTIMIZELY_PROJECT_ID;
+
+      if (!projectId) {
+        return {
+          data: null,
+          error: new Error("OPTIMIZELY_PROJECT_ID environment variable is required"),
+        };
+      }
+
+      const path = `/flags/v1/projects/${encodeURIComponent(projectId)}/flags/archived`;
+      const result = await this.request<Record<string, OptimizelyFlag>>(path, {
+        method: "POST",
+        body: JSON.stringify({ keys: keysArray }),
+      });
+
+      if (result.error) {
+        logger.error("Failed to archive feature flags", {
+          flagKeys: keysArray,
+          projectId,
+          error: result.error.message,
+        });
+        return { data: null, error: result.error };
+      }
+
+      logger.info("Successfully archived feature flags", {
+        flagKeys: keysArray,
+        projectId,
+        archivedCount: Object.keys(result.data || {}).length,
+      });
+
+      return { data: result.data, error: null };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Error in archiveFeatureFlags", { flagKeys, error: errorMsg });
+      return {
+        data: null,
+        error: new Error(`Failed to archive flags: ${errorMsg}`),
+      };
+    }
+  }
+
+  /**
+   * Archives a single feature flag by its key.
    * @param flagKey The key of the flag to archive
    * @returns Result object with success status or error
    */
   async archiveFeatureFlag(flagKey: string): Promise<Result<boolean, Error>> {
+    const result = await this.archiveFeatureFlags([flagKey]);
+
+    if (result.error) {
+      return { data: null, error: result.error };
+    }
+
+    const archived = result.data && Object.keys(result.data).length > 0;
+    return { data: archived, error: null };
+  }
+
+  /**
+   * Fetches detailed information for a specific feature flag.
+   * @param flagKey The key of the flag to fetch
+   * @returns Result object with detailed flag data or error
+   */
+  async getFlagDetails(flagKey: string): Promise<Result<OptimizelyFlag, Error>> {
     try {
       if (!flagKey || typeof flagKey !== "string") {
         return {
@@ -343,12 +430,11 @@ export class OptimizelyApiClient {
         encodeURIComponent(flagKey)
       }`;
       const result = await this.request<OptimizelyFlag>(path, {
-        method: "PATCH",
-        body: JSON.stringify({ archived: true }),
+        method: "GET",
       });
 
       if (result.error) {
-        logger.error("Failed to archive feature flag", {
+        logger.error("Failed to fetch flag details", {
           flagKey,
           projectId,
           error: result.error.message,
@@ -356,18 +442,73 @@ export class OptimizelyApiClient {
         return { data: null, error: result.error };
       }
 
-      logger.info("Successfully archived feature flag", {
+      logger.debug("Successfully fetched flag details", {
         flagKey,
         projectId,
+        hasEnvironments: !!result.data?.environments,
+        environmentCount: result.data?.environments
+          ? Object.keys(result.data.environments).length
+          : 0,
       });
 
-      return { data: true, error: null };
+      return { data: result.data, error: null };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      logger.error("Error in archiveFeatureFlag", { flagKey, error: errorMsg });
+      logger.error("Error in getFlagDetails", { flagKey, error: errorMsg });
       return {
         data: null,
-        error: new Error(`Failed to archive flag ${flagKey}: ${errorMsg}`),
+        error: new Error(`Failed to fetch flag details for ${flagKey}: ${errorMsg}`),
+      };
+    }
+  }
+
+  /**
+   * Fetches all environments for the configured Optimizely project.
+   * @returns Result object with array of OptimizelyEnvironmentListItem or error
+   */
+  async getEnvironments(): Promise<Result<OptimizelyEnvironmentListItem[], Error>> {
+    try {
+      const env = await loadEnvironment();
+      const projectId = env.OPTIMIZELY_PROJECT_ID;
+
+      if (!projectId) {
+        return {
+          data: null,
+          error: new Error("OPTIMIZELY_PROJECT_ID environment variable is required"),
+        };
+      }
+
+      const path = `/flags/v1/projects/${encodeURIComponent(projectId)}/environments`;
+      const result = await this.request<OptimizelyPaginatedResponse<OptimizelyEnvironmentListItem>>(
+        path,
+        {
+          method: "GET",
+        },
+      );
+
+      if (result.error) {
+        logger.error("Failed to fetch environments", {
+          projectId,
+          error: result.error.message,
+        });
+        return { data: null, error: result.error };
+      }
+
+      const environments = result.data?.items ?? [];
+
+      logger.debug("Successfully fetched environments", {
+        projectId,
+        environmentCount: environments.length,
+        environments: environments.map((env) => ({ key: env.key, name: env.name })),
+      });
+
+      return { data: environments, error: null };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Error in getEnvironments", { error: errorMsg });
+      return {
+        data: null,
+        error: new Error(`Failed to fetch environments: ${errorMsg}`),
       };
     }
   }

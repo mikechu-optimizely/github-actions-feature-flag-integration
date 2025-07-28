@@ -5,7 +5,7 @@
 
 import { assertEquals } from "@std/assert";
 import { EnvironmentConfig, OperationType } from "../types/config.ts";
-import { OptimizelyFlag } from "../types/optimizely.ts";
+import { OptimizelyEnvironmentListItem, OptimizelyFlag } from "../types/optimizely.ts";
 import { AuditEvent, AuditEventType } from "../modules/audit-reporter.ts";
 
 /**
@@ -53,6 +53,19 @@ export function createMockFlag(overrides: Partial<OptimizelyFlag> = {}): Optimiz
     updated_time: "2024-01-01T00:00:00Z",
     revision: 1,
     outlier_filtering_enabled: false,
+    update_url: "/projects/4678434014625792/flags",
+    delete_url: "/projects/4678434014625792/flags/test-flag",
+    archive_url: "/projects/4678434014625792/flags/archived",
+    variable_definitions: {
+      enabled: {
+        key: "enabled",
+        description: "Whether the feature is enabled",
+        type: "boolean",
+        default_value: "false",
+        created_time: "2024-01-01T00:00:00Z",
+        updated_time: "2024-01-01T00:00:00Z",
+      },
+    },
     environments: {
       production: {
         key: "production",
@@ -62,7 +75,11 @@ export function createMockFlag(overrides: Partial<OptimizelyFlag> = {}): Optimiz
         has_restricted_permissions: false,
         priority: 1,
         status: "running",
+        rules_summary: {},
+        rules_detail: [],
         created_time: "2024-01-01T00:00:00Z",
+        disable_url:
+          "/projects/4678434014625792/flags/test-flag/environments/production/ruleset/disabled",
       },
       development: {
         key: "development",
@@ -72,9 +89,33 @@ export function createMockFlag(overrides: Partial<OptimizelyFlag> = {}): Optimiz
         has_restricted_permissions: false,
         priority: 2,
         status: "draft",
+        rules_summary: {},
+        rules_detail: [],
         created_time: "2024-01-01T00:00:00Z",
+        enable_url:
+          "/projects/4678434014625792/flags/test-flag/environments/development/ruleset/enabled",
       },
     },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock Optimizely environment list item for testing.
+ */
+export function createMockEnvironmentListItem(
+  overrides: Partial<OptimizelyEnvironmentListItem> = {},
+): OptimizelyEnvironmentListItem {
+  return {
+    key: "test_env_" + Math.random().toString(36).substr(2, 9),
+    name: "Test Environment",
+    archived: false,
+    priority: 1,
+    account_id: 21468570738,
+    project_id: 4678434014625792,
+    role: "admin",
+    id: 101746715916459,
+    has_restricted_permissions: false,
     ...overrides,
   };
 }
@@ -348,35 +389,159 @@ export const TestFixtures = {
    */
   apiResponses: {
     featureFlags: {
+      url: "/projects/4678434014625792/flags",
+      fetch_flag_url: "/projects/4678434014625792/flags/{flag_key}",
+      create_url: "/projects/4678434014625792/flags",
+      last_url: "/projects/4678434014625792/flags",
+      first_url: "/projects/4678434014625792/flags",
+      count: 3,
+      total_pages: 1,
+      total_count: 3,
+      page: 1,
       items: [
         {
           key: "feature_flag_1",
           name: "Feature Flag 1",
           description: "First test feature flag",
-          url: "/flags/feature_flag_1",
+          url: "/projects/4678434014625792/flags/feature_flag_1",
+          update_url: "/projects/4678434014625792/flags",
+          delete_url: "/projects/4678434014625792/flags/feature_flag_1",
+          archive_url: "/projects/4678434014625792/flags/archived",
           archived: false,
+          id: 415337,
+          urn: "flags.flags.optimizely.com::415337",
+          project_id: 4678434014625792,
+          account_id: 21468570738,
+          created_by_user_id: "test@optimizely.com",
+          created_by_user_email: "test@optimizely.com",
+          role: "admin",
+          created_time: "2025-05-08T16:31:57.402712Z",
+          updated_time: "2025-05-12T20:23:40.825440Z",
+          revision: 4,
+          outlier_filtering_enabled: false,
+          variable_definitions: {
+            enabled: {
+              key: "enabled",
+              description: "Whether the feature is enabled",
+              type: "boolean",
+              default_value: "false",
+              created_time: "2025-05-08T16:44:36.100744Z",
+              updated_time: "2025-05-08T16:44:36.100749Z",
+            },
+          },
           environments: {
-            production: { enabled: true },
-            development: { enabled: false },
+            production: {
+              key: "production",
+              name: "Production",
+              enabled: true,
+              id: 101746715916459,
+              has_restricted_permissions: true,
+              priority: 1,
+              status: "running",
+              rules_summary: {},
+              rules_detail: [],
+              created_time: "2025-05-08T14:51:56.000000Z",
+              disable_url:
+                "/projects/4678434014625792/flags/feature_flag_1/environments/production/ruleset/disabled",
+            },
+            development: {
+              key: "development",
+              name: "Development",
+              enabled: false,
+              id: 361746715916479,
+              has_restricted_permissions: false,
+              priority: 2,
+              status: "draft",
+              rules_summary: {},
+              rules_detail: [],
+              created_time: "2025-05-08T14:51:56.000000Z",
+              enable_url:
+                "/projects/4678434014625792/flags/feature_flag_1/environments/development/ruleset/enabled",
+            },
           },
         },
         {
           key: "feature_flag_2",
           name: "Feature Flag 2",
           description: "Second test feature flag",
-          url: "/flags/feature_flag_2",
+          url: "/projects/4678434014625792/flags/feature_flag_2",
+          update_url: "/projects/4678434014625792/flags",
+          delete_url: "/projects/4678434014625792/flags/feature_flag_2",
+          archive_url: "/projects/4678434014625792/flags/archived",
           archived: false,
+          id: 415338,
+          urn: "flags.flags.optimizely.com::415338",
+          project_id: 4678434014625792,
+          account_id: 21468570738,
+          created_by_user_id: "test@optimizely.com",
+          created_by_user_email: "test@optimizely.com",
+          role: "admin",
+          created_time: "2025-05-08T16:31:57.402712Z",
+          updated_time: "2025-05-12T20:23:40.825440Z",
+          revision: 4,
+          outlier_filtering_enabled: false,
+          variable_definitions: {
+            theme: {
+              key: "theme",
+              description: "UI theme setting",
+              type: "string",
+              default_value: "default",
+              created_time: "2025-05-08T16:44:36.100744Z",
+              updated_time: "2025-05-08T16:44:36.100749Z",
+            },
+          },
           environments: {
-            production: { enabled: false },
-            development: { enabled: true },
+            production: {
+              key: "production",
+              name: "Production",
+              enabled: false,
+              id: 101746715916459,
+              has_restricted_permissions: true,
+              priority: 1,
+              status: "draft",
+              rules_summary: {},
+              rules_detail: [],
+              created_time: "2025-05-08T14:51:56.000000Z",
+              enable_url:
+                "/projects/4678434014625792/flags/feature_flag_2/environments/production/ruleset/enabled",
+            },
+            development: {
+              key: "development",
+              name: "Development",
+              enabled: true,
+              id: 361746715916479,
+              has_restricted_permissions: false,
+              priority: 2,
+              status: "running",
+              rules_summary: {},
+              rules_detail: [],
+              created_time: "2025-05-08T14:51:56.000000Z",
+              disable_url:
+                "/projects/4678434014625792/flags/feature_flag_2/environments/development/ruleset/disabled",
+            },
           },
         },
         {
           key: "archived_flag",
           name: "Archived Flag",
           description: "An archived flag",
-          url: "/flags/archived_flag",
+          url: "/projects/4678434014625792/flags/archived_flag",
+          update_url: "/projects/4678434014625792/flags",
+          delete_url: "/projects/4678434014625792/flags/archived_flag",
+          archive_url: "/projects/4678434014625792/flags/archived",
           archived: true,
+          id: 415339,
+          urn: "flags.flags.optimizely.com::415339",
+          project_id: 4678434014625792,
+          account_id: 21468570738,
+          created_by_user_id: "test@optimizely.com",
+          created_by_user_email: "test@optimizely.com",
+          role: "admin",
+          created_time: "2025-05-08T16:31:57.402712Z",
+          updated_time: "2025-05-12T20:23:40.825440Z",
+          revision: 4,
+          outlier_filtering_enabled: false,
+          variable_definitions: {},
           environments: {},
         },
       ],

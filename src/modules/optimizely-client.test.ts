@@ -289,7 +289,7 @@ Deno.test("OptimizelyApiClient: archiveFeatureFlag success", async () => {
   setEnv();
   globalThis.fetch = () =>
     Promise.resolve(
-      new Response(JSON.stringify({ key: "test-flag", archived: true }), {
+      new Response(JSON.stringify({ "test-flag": { key: "test-flag", archived: true } }), {
         status: 200,
         statusText: "OK",
         headers: { "Content-Type": "application/json" },
@@ -307,7 +307,142 @@ Deno.test("OptimizelyApiClient: archiveFeatureFlag with invalid flag key", async
   const result = await client.archiveFeatureFlag("");
   assertEquals(result.data, null);
   assert(result.error instanceof Error);
+  assert(result.error.message.includes("flag keys must be non-empty strings"));
+});
+
+Deno.test("OptimizelyApiClient: archiveFeatureFlags bulk operation", async () => {
+  setEnv();
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify({
+          flag_1: { key: "flag_1", archived: true },
+          flag_2: { key: "flag_2", archived: true },
+        }),
+        { status: 200 },
+      ),
+    );
+
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.archiveFeatureFlags(["flag_1", "flag_2"]);
+  assertEquals(result.error, null);
+  assert(result.data);
+  assertEquals(Object.keys(result.data).length, 2);
+});
+
+Deno.test("OptimizelyApiClient: getFlagDetails returns detailed flag information", async () => {
+  setEnv();
+  const mockFlag = {
+    key: "test_flag",
+    name: "Test Flag",
+    description: "A test flag",
+    url: "/projects/123456/flags/test_flag",
+    id: 415337,
+    urn: "flags.flags.optimizely.com::415337",
+    project_id: 4678434014625792,
+    account_id: 21468570738,
+    created_by_user_id: "test@optimizely.com",
+    created_by_user_email: "test@optimizely.com",
+    role: "admin",
+    created_time: "2025-05-08T16:31:57.402712Z",
+    updated_time: "2025-05-12T20:23:40.825440Z",
+    revision: 4,
+    archived: false,
+    outlier_filtering_enabled: false,
+    variable_definitions: {
+      enabled: {
+        key: "enabled",
+        description: "Feature enabled",
+        type: "boolean",
+        default_value: "false",
+        created_time: "2025-05-08T16:44:36.100744Z",
+        updated_time: "2025-05-08T16:44:36.100749Z",
+      },
+    },
+    environments: {
+      production: {
+        key: "production",
+        name: "Production",
+        enabled: true,
+        id: 101746715916459,
+        has_restricted_permissions: true,
+        priority: 1,
+        status: "running",
+        rules_summary: {},
+        rules_detail: [],
+        created_time: "2025-05-08T14:51:56.000000Z",
+      },
+    },
+  };
+
+  globalThis.fetch = () => Promise.resolve(new Response(JSON.stringify(mockFlag), { status: 200 }));
+
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.getFlagDetails("test_flag");
+  assertEquals(result.error, null);
+  assert(result.data);
+  assertEquals(result.data.key, "test_flag");
+  assertEquals(result.data.environments?.production?.status, "running");
+  assert(result.data.variable_definitions);
+});
+
+Deno.test("OptimizelyApiClient: getFlagDetails with invalid flag key", async () => {
+  setEnv();
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.getFlagDetails("");
+  assertEquals(result.data, null);
+  assert(result.error instanceof Error);
   assert(result.error.message.includes("Flag key is required"));
+});
+
+Deno.test("OptimizelyApiClient: getEnvironments returns list of environments", async () => {
+  setEnv();
+  const mockEnvironments = {
+    url: "/projects/4678434014625792/environments",
+    items: [
+      {
+        key: "production",
+        name: "Production",
+        archived: false,
+        priority: 1,
+        account_id: 21468570738,
+        project_id: 4678434014625792,
+        role: "admin",
+        id: 101746715916459,
+        has_restricted_permissions: true,
+      },
+      {
+        key: "development",
+        name: "Development",
+        archived: false,
+        priority: 2,
+        account_id: 21468570738,
+        project_id: 4678434014625792,
+        role: "admin",
+        id: 361746715916479,
+        has_restricted_permissions: false,
+      },
+    ],
+    page: 1,
+    last_url: "/projects/4678434014625792/environments",
+    total_count: 2,
+    total_pages: 1,
+    first_url: "/projects/4678434014625792/environments",
+    count: 2,
+  };
+
+  globalThis.fetch = () =>
+    Promise.resolve(new Response(JSON.stringify(mockEnvironments), { status: 200 }));
+
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.getEnvironments();
+  assertEquals(result.error, null);
+  assert(result.data);
+  assertEquals(result.data.length, 2);
+  assertEquals(result.data[0].key, "production");
+  assertEquals(result.data[0].has_restricted_permissions, true);
+  assertEquals(result.data[1].key, "development");
+  assertEquals(result.data[1].has_restricted_permissions, false);
 });
 
 Deno.test("OptimizelyApiClient: rate limiting behavior", async () => {
