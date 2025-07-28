@@ -174,6 +174,66 @@ export interface OptimizelyPaginatedResponse<T> {
 }
 
 /**
+ * Flag consistency validation result
+ */
+export interface FlagConsistencyValidation {
+  /** The flag key being validated */
+  flagKey: string;
+  /** Whether the flag is consistent across all environments */
+  isConsistent: boolean;
+  /** Environment-specific status information */
+  environments: Record<string, EnvironmentFlagStatus>;
+  /** List of inconsistencies found */
+  inconsistencies: FlagInconsistency[];
+  /** Summary statistics */
+  summary: FlagConsistencySummary;
+}
+
+/**
+ * Environment-specific flag status information
+ */
+export interface EnvironmentFlagStatus {
+  /** Environment key */
+  key: string;
+  /** Environment name */
+  name: string;
+  /** Whether the flag is enabled in this environment */
+  enabled: boolean;
+  /** Current status of the flag in this environment */
+  status: string;
+  /** Whether the flag has targeting rules configured */
+  hasTargetingRules: boolean;
+  /** Environment priority */
+  priority: number;
+}
+
+/**
+ * Flag inconsistency information
+ */
+export interface FlagInconsistency {
+  /** Type of inconsistency */
+  type: "mixed_enabled_status" | "mixed_status" | "missing_environment" | "configuration_mismatch";
+  /** Human-readable description of the inconsistency */
+  message: string;
+  /** List of environments affected by this inconsistency */
+  affectedEnvironments: string[];
+}
+
+/**
+ * Summary of flag consistency across environments
+ */
+export interface FlagConsistencySummary {
+  /** Total number of environments checked */
+  totalEnvironments: number;
+  /** Number of environments where flag is enabled */
+  enabledEnvironments: number;
+  /** Number of environments where flag is disabled */
+  disabledEnvironments: number;
+  /** Number of environments where flag is archived */
+  archivedEnvironments: number;
+}
+
+/**
  * Optimizely API error response
  */
 export interface OptimizelyApiError {

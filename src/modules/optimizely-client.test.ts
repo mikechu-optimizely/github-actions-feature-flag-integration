@@ -465,4 +465,203 @@ Deno.test("OptimizelyApiClient: rate limiting behavior", async () => {
   assert(elapsed >= 1000, `Expected at least 1000ms, got ${elapsed}ms`);
 });
 
+Deno.test("OptimizelyApiClient: getFlagStatusInEnvironment returns environment-specific flag data", async () => {
+  setEnv();
+  const mockEnvironmentData = {
+    key: "production",
+    name: "Production",
+    enabled: true,
+    status: "active",
+    id: 12345,
+    has_restricted_permissions: false,
+    priority: 1000,
+    created_time: "2023-01-01T00:00:00Z",
+    rolloutRules: [],
+  };
+
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response(JSON.stringify(mockEnvironmentData), {
+        status: 200,
+        statusText: "OK",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.getFlagStatusInEnvironment("test_flag", "production");
+
+  assertEquals(result.error, null);
+  assertEquals(result.data?.key, "production");
+  assertEquals(result.data?.enabled, true);
+  assertEquals(result.data?.status, "active");
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusInEnvironment handles invalid parameters", async () => {
+  setEnv();
+  const client = new OptimizelyApiClient("test-token");
+
+  // Test empty flag key
+  const result1 = await client.getFlagStatusInEnvironment("", "production");
+  assertEquals(result1.data, null);
+  assert(result1.error?.message.includes("Flag key is required"));
+
+  // Test empty environment key
+  const result2 = await client.getFlagStatusInEnvironment("test_flag", "");
+  assertEquals(result2.data, null);
+  assert(result2.error?.message.includes("Environment key is required"));
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusAcrossEnvironments fetches all environments", async () => {
+  setEnv();
+
+  let callCount = 0;
+  globalThis.fetch = (url: string | URL | Request) => {
+    callCount++;
+    const urlStr = url.toString();
+
+    if (urlStr.includes("/environments/")) {
+      // Mock environment-specific flag data (this must come first!)
+      const isProduction = urlStr.includes("/prod");
+      const mockData = {
+        key: isProduction ? "prod" : "dev",
+        name: isProduction ? "Production" : "Development",
+        enabled: isProduction ? true : false, // Explicit values for testing
+        status: "active",
+        id: isProduction ? 12345 : 12346,
+        has_restricted_permissions: false,
+        priority: 1000,
+        created_time: "2023-01-01T00:00:00Z",
+      };
+      return Promise.resolve(
+        new Response(JSON.stringify(mockData), { status: 200 }),
+      );
+    } else if (urlStr.includes("/environments")) {
+      // Mock environments list
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            items: [
+              { key: "dev", name: "Development" },
+              { key: "prod", name: "Production" },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+
+    return Promise.resolve(new Response("Not Found", { status: 404 }));
+  };
+
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.getFlagStatusAcrossEnvironments("test_flag");
+
+  assertEquals(result.error, null);
+  assert(result.data);
+  assertEquals(Object.keys(result.data).length, 2);
+  assertEquals(result.data["dev"]?.enabled, false);
+  assertEquals(result.data["prod"]?.enabled, true);
+});
+
+Deno.test("OptimizelyApiClient: validateFlagConsistency detects inconsistencies", async () => {
+  setEnv();
+
+  globalThis.fetch = (url: string | URL | Request) => {
+    const urlStr = url.toString();
+
+    if (urlStr.includes("/environments/")) {
+      const isProduction = urlStr.includes("/prod");
+      const mockData = {
+        key: isProduction ? "prod" : "dev",
+        name: isProduction ? "Production" : "Development",
+        enabled: isProduction ? true : false, // Different enabled status for inconsistency test
+        status: "active",
+        id: isProduction ? 12345 : 12346,
+        has_restricted_permissions: false,
+        priority: 1000,
+        created_time: "2023-01-01T00:00:00Z",
+        rolloutRules: [],
+      };
+      return Promise.resolve(
+        new Response(JSON.stringify(mockData), { status: 200 }),
+      );
+    } else if (urlStr.includes("/environments")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            items: [
+              { key: "dev", name: "Development" },
+              { key: "prod", name: "Production" },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+
+    return Promise.resolve(new Response("Not Found", { status: 404 }));
+  };
+
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.validateFlagConsistency("test_flag");
+
+  assertEquals(result.error, null);
+  assert(result.data);
+  assertEquals(result.data.isConsistent, false);
+  assertEquals(result.data.inconsistencies.length, 1);
+  assertEquals(result.data.inconsistencies[0].type, "mixed_enabled_status");
+});
+
+Deno.test("OptimizelyApiClient: validateFlagConsistency reports consistent flags", async () => {
+  setEnv();
+
+  globalThis.fetch = (url: string | URL | Request) => {
+    const urlStr = url.toString();
+
+    if (urlStr.includes("/environments/")) {
+      const isProduction = urlStr.includes("/prod");
+      const mockData = {
+        key: isProduction ? "prod" : "dev",
+        name: isProduction ? "Production" : "Development",
+        enabled: true, // Same enabled status for consistency test
+        status: "active", // Same status
+        id: isProduction ? 12345 : 12346,
+        has_restricted_permissions: false,
+        priority: 1000,
+        created_time: "2023-01-01T00:00:00Z",
+        rolloutRules: [],
+      };
+      return Promise.resolve(
+        new Response(JSON.stringify(mockData), { status: 200 }),
+      );
+    } else if (urlStr.includes("/environments")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            items: [
+              { key: "dev", name: "Development" },
+              { key: "prod", name: "Production" },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+
+    return Promise.resolve(new Response("Not Found", { status: 404 }));
+  };
+
+  const client = new OptimizelyApiClient("test-token");
+  const result = await client.validateFlagConsistency("test_flag");
+
+  assertEquals(result.error, null);
+  assert(result.data);
+  assertEquals(result.data.isConsistent, true);
+  assertEquals(result.data.inconsistencies.length, 0);
+  assertEquals(result.data.summary.totalEnvironments, 2);
+  assertEquals(result.data.summary.enabledEnvironments, 2);
+  assertEquals(result.data.summary.disabledEnvironments, 0);
+});
+
 globalThis.fetch = originalFetch;

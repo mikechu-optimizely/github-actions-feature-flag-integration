@@ -4,6 +4,8 @@ import * as retry from "../utils/retry.ts";
 import * as validation from "../utils/validation.ts";
 import { Result } from "../utils/try-catch.ts";
 import {
+  FlagConsistencyValidation,
+  OptimizelyEnvironment,
   OptimizelyEnvironmentListItem,
   OptimizelyFlag,
   OptimizelyPaginatedResponse,
@@ -458,6 +460,284 @@ export class OptimizelyApiClient {
       return {
         data: null,
         error: new Error(`Failed to fetch flag details for ${flagKey}: ${errorMsg}`),
+      };
+    }
+  }
+
+  /**
+   * Fetches environment-specific flag status for a given flag key.
+   * @param flagKey The feature flag key to check
+   * @param environmentKey The environment key to check status for
+   * @returns Result object with environment-specific flag data or error
+   */
+  async getFlagStatusInEnvironment(
+    flagKey: string,
+    environmentKey: string,
+  ): Promise<Result<OptimizelyEnvironment, Error>> {
+    try {
+      if (!flagKey || typeof flagKey !== "string") {
+        return {
+          data: null,
+          error: new Error("Flag key is required and must be a string"),
+        };
+      }
+
+      if (!environmentKey || typeof environmentKey !== "string") {
+        return {
+          data: null,
+          error: new Error("Environment key is required and must be a string"),
+        };
+      }
+
+      const env = await loadEnvironment();
+      const projectId = env.OPTIMIZELY_PROJECT_ID;
+
+      if (!projectId) {
+        return {
+          data: null,
+          error: new Error("OPTIMIZELY_PROJECT_ID environment variable is required"),
+        };
+      }
+
+      const path = `/flags/v1/projects/${encodeURIComponent(projectId)}/flags/${
+        encodeURIComponent(flagKey)
+      }/environments/${encodeURIComponent(environmentKey)}`;
+      const result = await this.request<OptimizelyEnvironment>(path, {
+        method: "GET",
+      });
+
+      if (result.error) {
+        logger.error("Failed to fetch flag status in environment", {
+          flagKey,
+          environmentKey,
+          projectId,
+          error: result.error.message,
+        });
+        return { data: null, error: result.error };
+      }
+
+      logger.debug("Successfully fetched flag status in environment", {
+        flagKey,
+        environmentKey,
+        enabled: result.data?.enabled,
+        status: result.data?.status,
+      });
+
+      return result;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Error in getFlagStatusInEnvironment", {
+        flagKey,
+        environmentKey,
+        error: errorMsg,
+      });
+      return {
+        data: null,
+        error: new Error(
+          `Failed to fetch flag status for ${flagKey} in environment ${environmentKey}: ${errorMsg}`,
+        ),
+      };
+    }
+  }
+
+  /**
+   * Fetches flag status across all environments for consistency checking.
+   * @param flagKey The feature flag key to check across environments
+   * @returns Result object with environment status map or error
+   */
+  async getFlagStatusAcrossEnvironments(
+    flagKey: string,
+  ): Promise<Result<Record<string, OptimizelyEnvironment>, Error>> {
+    try {
+      if (!flagKey || typeof flagKey !== "string") {
+        return {
+          data: null,
+          error: new Error("Flag key is required and must be a string"),
+        };
+      }
+
+      // First, get all environments
+      const environmentsResult = await this.getEnvironments();
+      if (environmentsResult.error || !environmentsResult.data) {
+        return {
+          data: null,
+          error: environmentsResult.error || new Error("Failed to fetch environments"),
+        };
+      }
+
+      const environments = environmentsResult.data;
+      const environmentStatusMap: Record<string, OptimizelyEnvironment> = {};
+      const errors: string[] = [];
+
+      // Fetch flag status for each environment
+      for (const environment of environments) {
+        const statusResult = await this.getFlagStatusInEnvironment(flagKey, environment.key);
+
+        if (statusResult.error) {
+          errors.push(`Environment ${environment.key}: ${statusResult.error.message}`);
+          logger.warn("Failed to fetch flag status for environment", {
+            flagKey,
+            environmentKey: environment.key,
+            error: statusResult.error.message,
+          });
+        } else if (statusResult.data) {
+          environmentStatusMap[environment.key] = statusResult.data;
+        }
+      }
+
+      // If we have partial data, still return it but log warnings
+      if (errors.length > 0) {
+        logger.warn("Some environment status checks failed", {
+          flagKey,
+          failedEnvironments: errors.length,
+          totalEnvironments: environments.length,
+          errors,
+        });
+      }
+
+      logger.debug("Successfully fetched flag status across environments", {
+        flagKey,
+        environmentCount: Object.keys(environmentStatusMap).length,
+        environments: Object.keys(environmentStatusMap),
+      });
+
+      return { data: environmentStatusMap, error: null };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Error in getFlagStatusAcrossEnvironments", {
+        flagKey,
+        error: errorMsg,
+      });
+      return {
+        data: null,
+        error: new Error(
+          `Failed to fetch flag status across environments for ${flagKey}: ${errorMsg}`,
+        ),
+      };
+    }
+  }
+
+  /**
+   * Validates flag configuration consistency across environments.
+   * @param flagKey The feature flag key to validate
+   * @returns Result object with validation results or error
+   */
+  async validateFlagConsistency(
+    flagKey: string,
+  ): Promise<Result<FlagConsistencyValidation, Error>> {
+    try {
+      if (!flagKey || typeof flagKey !== "string") {
+        return {
+          data: null,
+          error: new Error("Flag key is required and must be a string"),
+        };
+      }
+
+      const statusResult = await this.getFlagStatusAcrossEnvironments(flagKey);
+      if (statusResult.error || !statusResult.data) {
+        return {
+          data: null,
+          error: statusResult.error || new Error("Failed to fetch flag status across environments"),
+        };
+      }
+
+      const environmentStatuses = statusResult.data;
+      const environments = Object.keys(environmentStatuses);
+
+      if (environments.length === 0) {
+        return {
+          data: null,
+          error: new Error(`No environment data found for flag ${flagKey}`),
+        };
+      }
+
+      const validation: FlagConsistencyValidation = {
+        flagKey,
+        isConsistent: true,
+        environments: {},
+        inconsistencies: [],
+        summary: {
+          totalEnvironments: environments.length,
+          enabledEnvironments: 0,
+          disabledEnvironments: 0,
+          archivedEnvironments: 0,
+        },
+      };
+
+      // Analyze each environment
+      for (const [envKey, envData] of Object.entries(environmentStatuses)) {
+        validation.environments[envKey] = {
+          key: envKey,
+          name: envData.name,
+          enabled: envData.enabled,
+          status: envData.status,
+          hasTargetingRules: !!(envData.rolloutRules && envData.rolloutRules.length > 0),
+          priority: envData.priority,
+        };
+
+        // Update summary counts
+        if (envData.enabled) {
+          validation.summary.enabledEnvironments++;
+        } else {
+          validation.summary.disabledEnvironments++;
+        }
+
+        // Check for archived status
+        if (envData.status === "archived") {
+          validation.summary.archivedEnvironments++;
+        }
+      }
+
+      // Check for inconsistencies
+      const enabledStatuses = environments.map((env) => environmentStatuses[env].enabled);
+      const statuses = environments.map((env) => environmentStatuses[env].status);
+
+      // Check if all environments have the same enabled status
+      const allEnabled = enabledStatuses.every((status) => status === true);
+      const allDisabled = enabledStatuses.every((status) => status === false);
+      const mixedEnabled = !allEnabled && !allDisabled;
+
+      if (mixedEnabled) {
+        validation.isConsistent = false;
+        validation.inconsistencies.push({
+          type: "mixed_enabled_status",
+          message: "Flag has mixed enabled/disabled status across environments",
+          affectedEnvironments: environments.filter((_env, idx) =>
+            enabledStatuses[idx] !== enabledStatuses[0]
+          ),
+        });
+      }
+
+      // Check for different statuses
+      const uniqueStatuses = [...new Set(statuses)];
+      if (uniqueStatuses.length > 1) {
+        validation.isConsistent = false;
+        validation.inconsistencies.push({
+          type: "mixed_status",
+          message: `Flag has different statuses across environments: ${uniqueStatuses.join(", ")}`,
+          affectedEnvironments: environments,
+        });
+      }
+
+      logger.debug("Flag consistency validation completed", {
+        flagKey,
+        isConsistent: validation.isConsistent,
+        inconsistencyCount: validation.inconsistencies.length,
+        summary: validation.summary,
+      });
+
+      return { data: validation, error: null };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Error in validateFlagConsistency", {
+        flagKey,
+        error: errorMsg,
+      });
+      return {
+        data: null,
+        error: new Error(
+          `Failed to validate flag consistency for ${flagKey}: ${errorMsg}`,
+        ),
       };
     }
   }
