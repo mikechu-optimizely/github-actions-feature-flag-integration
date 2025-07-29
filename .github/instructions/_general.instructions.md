@@ -1,3 +1,7 @@
+---
+applyTo: '**/*'
+---
+
 # General Instructions
 
 ## You, the Agent/Assistant Role

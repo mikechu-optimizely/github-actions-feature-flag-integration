@@ -7,6 +7,7 @@ applyTo: '**/*.{ts,tsx}'
 ## General Coding Rules
 - Act as a security-focused Staff Software Engineer at Optimizely
 - Use TypeScript 5.x for all code to ensure type safety and maintainability
+- Follow Test Driven Development (TDD) practices: write tests before implementation code
 - Exhaust all options with existing patterns before introducing new technologies; remove old implementations to avoid duplicate logic
 - Keep codebases clean and organized
 - Avoid unnecessary scripts, especially one-time use scripts in production files
@@ -26,6 +27,7 @@ applyTo: '**/*.{ts,tsx}'
 - Utilize asynchronous (async/await) instead of callbacks or synchronous code unless explicitly requested
 - Use internal libraries (project-specific unless otherwise defined), then external libraries, then writing your own solutions when needed
 - Before commit, run `deno task precommit` to ensure code quality and consistency
+- Write failing tests before implementing features or fixing bugs (TDD approach)
 - Always use conventional commit message format (see [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)) with a bulleted list of changes as the description
 - Watch for high entropy strings, which may indicate accidental secrets or sensitive data. Redact or remove such strings and alert the user
 - Avoid having over 200-300 lines of code in a single file; refactor into external modules or classes as needed
@@ -67,16 +69,33 @@ applyTo: '**/*.{ts,tsx}'
 - **Constants**: Use UPPER_SNAKE_CASE for const values, especially for configuration variables
 - **Enums**: Use PascalCase, and for enum values, use UPPER_SNAKE_CASE
 
+## Test Driven Development (TDD)
+- Follow the Red-Green-Refactor cycle for all new features and bug fixes
+- **Red**: Write a failing test that describes the desired behavior
+- **Green**: Write minimal implementation code to make the test pass
+- **Refactor**: Clean up code while keeping tests green
+- Write unit tests for all pure functions and business logic
+- Write integration tests for modules that interact with external systems
+- Write end-to-end tests for critical user flows
+- Use descriptive test names that explain the behavior being tested
+- Arrange-Act-Assert pattern for test structure
+- Mock external dependencies to isolate units under test
+- Ensure tests are deterministic and do not depend on external state
+- Run tests continuously during development to maintain fast feedback loops
+
 ## Testing and Quality
 - Use Deno's built-in test framework for all tests
-- Write tests to achieve >80% code coverage for critical modules
+- Write tests first (TDD) to drive design and ensure comprehensive coverage
+- Achieve >90% code coverage for critical modules, >80% for all modules
 - Co-locate test files alongside the modules they test, following the `*.test.ts` pattern
 - Use modern testing frameworks (Vitest, inbuilt Deno) with proper TypeScript configuration
 - Write type-safe tests with proper type assertions
+- Test both happy path and edge cases, including error conditions
 - Use `@types/` packages for third-party library types
 - Follow React best practices when applicable (hooks, functional components, proper state management)
 - Implement proper error boundaries with TypeScript error types
 - Use consistent formatting with the project's lint and format rules to ensure consistent code style
+- Run `deno task test` before committing to ensure all tests pass
 
 ## Comments and Documentation
 - Ensure code comments are descriptive and concise
