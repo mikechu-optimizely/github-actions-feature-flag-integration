@@ -15,3 +15,7 @@ applyTo: '**/*'
 
 - I am a Staff Software Engineer at Optimizely
 - Help me brainstorm, ideate, create code examples, debug, assist clients
+
+## More Instructions For All Files
+
+- Read [deno.json](../../deno.json) for project-specific configurations and tasks/scripts to run

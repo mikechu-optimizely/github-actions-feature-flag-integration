@@ -26,7 +26,6 @@ applyTo: '**/*.{ts,tsx}'
 - Produce performant code, considering aspects like caching, lazy loading, and code splitting
 - Utilize asynchronous (async/await) instead of callbacks or synchronous code unless explicitly requested
 - Use internal libraries (project-specific unless otherwise defined), then external libraries, then writing your own solutions when needed
-- Read [deno.json](../../deno.json) for project-specific configurations and tasks/scripts to run
 - Before commit, run `deno task precommit` to ensure code quality and consistency
 - Write failing tests before implementing features or fixing bugs (TDD approach)
 - Always use conventional commit message format (see [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)) with a bulleted list of changes as the description
