@@ -233,6 +233,64 @@ export function cleanupTestEnvironment(): void {
 }
 
 /**
+ * Executes a test function with isolated environment variables.
+ * Automatically cleans up environment variables after test execution.
+ * @param envVars Environment variables to set for the test
+ * @param testFn Test function to execute
+ */
+export async function withTestEnvironment(
+  envVars: Record<string, string>,
+  testFn: () => Promise<void> | void,
+): Promise<void> {
+  // Store original values for all potentially affected environment variables
+  const originalValues: Record<string, string | undefined> = {};
+  
+  const allEnvKeys = [
+    "OPTIMIZELY_API_TOKEN",
+    "OPTIMIZELY_PROJECT_ID",
+    "ENVIRONMENT",
+    "OPERATION", 
+    "DRY_RUN",
+    "REPORTS_PATH",
+    "LOG_LEVEL",
+    "API_RATE_LIMIT",
+    "API_TIMEOUT",
+    "MAX_RETRIES",
+    "CONCURRENCY_LIMIT",
+    "GITHUB_TOKEN",
+    "GITHUB_RUN_ID",
+  ];
+
+  // Store original values
+  for (const key of allEnvKeys) {
+    originalValues[key] = Deno.env.get(key);
+  }
+
+  try {
+    // Clear all test-related environment variables first to ensure clean state
+    for (const key of allEnvKeys) {
+      Deno.env.delete(key);
+    }
+
+    // Set test environment variables
+    for (const [key, value] of Object.entries(envVars)) {
+      Deno.env.set(key, value);
+    }
+
+    await testFn();
+  } finally {
+    // Restore original values
+    for (const key of allEnvKeys) {
+      if (originalValues[key] === undefined) {
+        Deno.env.delete(key);
+      } else {
+        Deno.env.set(key, originalValues[key]!);
+      }
+    }
+  }
+}
+
+/**
  * Creates a temporary directory for test files.
  */
 export async function createTempDir(prefix = "test-"): Promise<string> {
