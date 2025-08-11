@@ -687,7 +687,7 @@ function createProgressTracker(totalFiles: number, totalBatches: number): Progre
     totalBatches,
     startTime: Date.now(),
     flagsFound: 0,
-    filesWithFlags: 0
+    filesWithFlags: 0,
   };
 }
 
@@ -696,12 +696,15 @@ function createProgressTracker(totalFiles: number, totalBatches: number): Progre
  * @param tracker Progress tracker to update
  * @param batchResults Results from processing a batch
  */
-function updateProgress(tracker: ProgressTracker, batchResults: (Map<string, FlagUsage[]> | null)[]): void {
+function updateProgress(
+  tracker: ProgressTracker,
+  batchResults: (Map<string, FlagUsage[]> | null)[],
+): void {
   tracker.currentBatch++;
-  
+
   for (const batchResult of batchResults) {
     tracker.processedFiles++;
-    
+
     if (batchResult) {
       let fileHasFlags = false;
       for (const [, usages] of batchResult.entries()) {
@@ -727,13 +730,13 @@ function printProgress(tracker: ProgressTracker): void {
   const percentage = (tracker.processedFiles / tracker.totalFiles * 100).toFixed(1);
   const estimatedTotal = elapsed / tracker.processedFiles * tracker.totalFiles;
   const remaining = Math.max(0, estimatedTotal - elapsed);
-  
+
   console.log(
     `Progress: ${percentage}% (${tracker.processedFiles}/${tracker.totalFiles} files) | ` +
-    `Batch ${tracker.currentBatch}/${tracker.totalBatches} | ` +
-    `Rate: ${rate.toFixed(1)} files/sec | ` +
-    `Flags found: ${tracker.flagsFound} in ${tracker.filesWithFlags} files | ` +
-    `ETA: ${Math.round(remaining / 1000)}s`
+      `Batch ${tracker.currentBatch}/${tracker.totalBatches} | ` +
+      `Rate: ${rate.toFixed(1)} files/sec | ` +
+      `Flags found: ${tracker.flagsFound} in ${tracker.filesWithFlags} files | ` +
+      `ETA: ${Math.round(remaining / 1000)}s`,
   );
 }
 
@@ -750,7 +753,7 @@ export async function processFilesInParallel(
   config: CodeAnalysisConfig,
 ): Promise<Map<string, FlagUsage[]>> {
   const result = new Map<string, FlagUsage[]>();
-  
+
   // Initialize result map
   for (const flag of flagKeys) {
     result.set(flag, []);
@@ -759,32 +762,34 @@ export async function processFilesInParallel(
   // Apply smart filtering if enabled
   const filteredFiles = applySmartFiltering(files, config);
   if (filteredFiles.length < files.length) {
-    console.log(`Smart filtering reduced scope from ${files.length} to ${filteredFiles.length} files`);
+    console.log(
+      `Smart filtering reduced scope from ${files.length} to ${filteredFiles.length} files`,
+    );
   }
 
   // Calculate optimal batch size based on available memory and file count
   const batchSize = calculateOptimalBatchSize(filteredFiles.length, config.concurrencyLimit);
   const batches = chunkArray(filteredFiles, batchSize);
-  
+
   // Initialize progress tracking
   const progress = createProgressTracker(filteredFiles.length, batches.length);
-  
-  console.log(`Processing ${filteredFiles.length} files in ${batches.length} batches of ~${batchSize} files each with concurrency limit ${config.concurrencyLimit}`);
-  
+
+  console.log(
+    `Processing ${filteredFiles.length} files in ${batches.length} batches of ~${batchSize} files each with concurrency limit ${config.concurrencyLimit}`,
+  );
+
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
-    
+
     // Process each batch with controlled concurrency
     const semaphore = new Semaphore(config.concurrencyLimit);
     const batchResults = await Promise.all(
-      batch.map(file => 
-        semaphore.acquire(() => processFileForFlags(file, flagKeys))
-      )
+      batch.map((file) => semaphore.acquire(() => processFileForFlags(file, flagKeys))),
     );
-    
+
     // Update progress tracking
     updateProgress(progress, batchResults);
-    
+
     // Merge batch results into main result
     for (const batchResult of batchResults) {
       if (batchResult) {
@@ -793,25 +798,30 @@ export async function processFilesInParallel(
         }
       }
     }
-    
+
     // Print progress every few batches or for large batches
     if (batchIndex % 5 === 0 || batch.length > 100) {
       printProgress(progress);
     }
-    
+
     // Force garbage collection between batches for large repositories
-    if (batchIndex % 10 === 0 && typeof (globalThis as any).gc === 'function') {
-      (globalThis as any).gc();
+    if (
+      batchIndex % 10 === 0 &&
+      typeof (globalThis as unknown as { gc?: () => void }).gc === "function"
+    ) {
+      (globalThis as unknown as { gc: () => void }).gc();
     }
   }
-  
+
   // Final progress report
   printProgress(progress);
-  
+
   const totalTime = Date.now() - progress.startTime;
-  console.log(`\nCompleted processing ${filteredFiles.length} files in ${(totalTime / 1000).toFixed(2)}s`);
+  console.log(
+    `\nCompleted processing ${filteredFiles.length} files in ${(totalTime / 1000).toFixed(2)}s`,
+  );
   console.log(`Found ${progress.flagsFound} flag references in ${progress.filesWithFlags} files`);
-  
+
   return result;
 }
 
@@ -830,7 +840,7 @@ function calculateOptimalBatchSize(totalFiles: number, concurrencyLimit: number)
   } else if (totalFiles > 1000) {
     return Math.max(concurrencyLimit * 50, 500);
   }
-  
+
   // For smaller codebases, process everything in one batch
   return totalFiles;
 }
@@ -857,21 +867,21 @@ function chunkArray<T>(array: T[], size: number): T[][] {
  */
 export async function processFileForFlags(
   file: string,
-  flagKeys: string[]
+  flagKeys: string[],
 ): Promise<Map<string, FlagUsage[]> | null> {
   try {
     const content = await Deno.readTextFile(file);
     const lines = content.split("\n");
     const fileExtension = extname(file);
     const result = new Map<string, FlagUsage[]>();
-    
+
     // Initialize result map for this file
     for (const flag of flagKeys) {
       result.set(flag, []);
     }
-    
+
     let inBlockComment = false;
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const [isComment, nextBlock] = isCommentLine(
@@ -881,7 +891,7 @@ export async function processFileForFlags(
       );
       inBlockComment = nextBlock;
       if (isComment) continue;
-      
+
       for (const flag of flagKeys) {
         // Use word boundary to avoid partial matches
         const regex = new RegExp(
@@ -896,7 +906,7 @@ export async function processFileForFlags(
         }
       }
     }
-    
+
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -961,12 +971,12 @@ export class FileIndexCache {
       if (await exists(this.cacheFile)) {
         const content = await Deno.readTextFile(this.cacheFile);
         const data = JSON.parse(content);
-        
+
         // Convert Map from JSON
         if (data.flagUsages) {
           data.flagUsages = new Map(Object.entries(data.flagUsages));
         }
-        
+
         this.index = data;
         return this.index;
       }
@@ -983,13 +993,13 @@ export class FileIndexCache {
   async saveIndex(index: FileIndex): Promise<void> {
     try {
       await this.ensureCacheDir();
-      
+
       // Convert Map to object for JSON serialization
       const serializable = {
         ...index,
-        flagUsages: index.flagUsages ? Object.fromEntries(index.flagUsages) : undefined
+        flagUsages: index.flagUsages ? Object.fromEntries(index.flagUsages) : undefined,
       };
-      
+
       await Deno.writeTextFile(this.cacheFile, JSON.stringify(serializable, null, 2));
       this.index = index;
     } catch (error) {
@@ -1005,23 +1015,23 @@ export class FileIndexCache {
     if (!this.index) {
       await this.loadIndex();
     }
-    
+
     if (!this.index) {
       return false;
     }
-    
+
     // Check if file count matches
     if (this.index.files.length !== files.length) {
       return false;
     }
-    
+
     // Check if files have been modified since cache was created
     for (const filePath of files) {
-      const cachedFile = this.index.files.find(f => f.path === filePath);
+      const cachedFile = this.index.files.find((f) => f.path === filePath);
       if (!cachedFile) {
         return false;
       }
-      
+
       try {
         const stat = await Deno.stat(filePath);
         if (stat.mtime && stat.mtime.getTime() !== cachedFile.modifiedTime) {
@@ -1032,7 +1042,7 @@ export class FileIndexCache {
         return false;
       }
     }
-    
+
     return true;
   }
 
@@ -1051,25 +1061,25 @@ export class FileIndexCache {
    */
   async createFileIndex(files: string[]): Promise<FileIndex> {
     const fileMetadata: FileMetadata[] = [];
-    
+
     for (const filePath of files) {
       try {
         const stat = await Deno.stat(filePath);
         fileMetadata.push({
           path: filePath,
           size: stat.size,
-          modifiedTime: stat.mtime?.getTime() || Date.now()
+          modifiedTime: stat.mtime?.getTime() || Date.now(),
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.warn(`Warning: Could not get stats for ${filePath}: ${message}`);
       }
     }
-    
+
     return {
       version: "1.0.0",
       timestamp: Date.now(),
-      files: fileMetadata
+      files: fileMetadata,
     };
   }
 
@@ -1109,20 +1119,20 @@ export async function collectSourceFilesWithIndexing(
   config: CodeAnalysisConfig,
 ): Promise<string[]> {
   const cache = new FileIndexCache(rootDir);
-  
+
   // Try to use cached file list first
   const existingIndex = await cache.loadIndex();
-  if (existingIndex && await cache.isIndexValid(existingIndex.files.map(f => f.path))) {
+  if (existingIndex && await cache.isIndexValid(existingIndex.files.map((f) => f.path))) {
     console.log(`Using cached file index with ${existingIndex.files.length} files`);
-    return existingIndex.files.map(f => f.path);
+    return existingIndex.files.map((f) => f.path);
   }
-  
+
   console.log("Building new file index...");
   const files = await collectSourceFilesWithConfig(rootDir, config);
-  
+
   // Cache the file list for future use
   await cache.updateCache(files, new Map());
-  
+
   return files;
 }
 
@@ -1138,12 +1148,12 @@ export async function findFlagUsagesWithCaching(
 ): Promise<Map<string, FlagUsage[]>> {
   const cache = new FileIndexCache(config.workspaceRoot);
   const files = await collectSourceFilesWithIndexing(config.workspaceRoot, config);
-  
+
   // Try to use cached results first
   const cachedResults = await cache.getCachedFlagUsages(files);
   if (cachedResults) {
     console.log("Using cached flag usage results");
-    
+
     // Filter cached results to only include requested flags
     const result = new Map<string, FlagUsage[]>();
     for (const flag of flagKeys) {
@@ -1151,13 +1161,13 @@ export async function findFlagUsagesWithCaching(
     }
     return result;
   }
-  
+
   console.log("Computing new flag usage results...");
   const result = await processFilesInParallel(files, flagKeys, config);
-  
+
   // Cache the results for future use
   await cache.updateCache(files, result);
-  
+
   return result;
 }
 
@@ -1169,21 +1179,21 @@ export async function findFlagUsagesWithCaching(
  */
 export function applySmartFiltering(
   files: string[],
-  config: CodeAnalysisConfig,
+  _config: CodeAnalysisConfig,
 ): string[] {
   // Priority file extensions (most likely to contain flag references)
-  const highPriorityExtensions = ['.ts', '.tsx', '.js', '.jsx', '.vue', '.svelte'];
-  const mediumPriorityExtensions = ['.py', '.java', '.cs', '.go', '.php', '.rb', '.cpp', '.c'];
-  const lowPriorityExtensions = ['.html', '.css', '.scss', '.less', '.sql'];
-  
+  const highPriorityExtensions = [".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte"];
+  const mediumPriorityExtensions = [".py", ".java", ".cs", ".go", ".php", ".rb", ".cpp", ".c"];
+  const lowPriorityExtensions = [".html", ".css", ".scss", ".less", ".sql"];
+
   // Categorize files by priority
   const highPriority: string[] = [];
   const mediumPriority: string[] = [];
   const lowPriority: string[] = [];
-  
+
   for (const file of files) {
     const ext = extname(file).toLowerCase();
-    
+
     if (highPriorityExtensions.includes(ext)) {
       highPriority.push(file);
     } else if (mediumPriorityExtensions.includes(ext)) {
@@ -1192,7 +1202,7 @@ export function applySmartFiltering(
       lowPriority.push(file);
     }
   }
-  
+
   // For very large codebases, prioritize high and medium priority files
   if (files.length > 50000) {
     console.log(`Large codebase detected (${files.length} files). Prioritizing high-value files.`);
@@ -1200,7 +1210,7 @@ export function applySmartFiltering(
   } else if (files.length > 20000) {
     return [...highPriority, ...mediumPriority, ...lowPriority.slice(0, 5000)];
   }
-  
+
   // For smaller codebases, scan everything
   return files;
 }
@@ -1260,9 +1270,9 @@ export const DEFAULT_LANGUAGE_PATTERNS: LanguagePatterns = {
       "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
       "flag\\s*[=:]\\s*['\"]([^'\"]+)['\"],?",
       "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
-      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
     ],
-    fileExtensions: [".ts", ".tsx"]
+    fileExtensions: [".ts", ".tsx"],
   },
   javascript: {
     patterns: [
@@ -1270,9 +1280,9 @@ export const DEFAULT_LANGUAGE_PATTERNS: LanguagePatterns = {
       "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
       "flag\\s*[=:]\\s*['\"]([^'\"]+)['\"],?",
       "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
-      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
     ],
-    fileExtensions: [".js", ".jsx", ".mjs", ".cjs"]
+    fileExtensions: [".js", ".jsx", ".mjs", ".cjs"],
   },
   python: {
     patterns: [
@@ -1280,9 +1290,9 @@ export const DEFAULT_LANGUAGE_PATTERNS: LanguagePatterns = {
       "get_flag\\s*\\(['\"]([^'\"]+)['\"]\\)",
       "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
       "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
-      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
     ],
-    fileExtensions: [".py"]
+    fileExtensions: [".py"],
   },
   java: {
     patterns: [
@@ -1290,9 +1300,9 @@ export const DEFAULT_LANGUAGE_PATTERNS: LanguagePatterns = {
       "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
       "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
       "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
-      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
     ],
-    fileExtensions: [".java"]
+    fileExtensions: [".java"],
   },
   csharp: {
     patterns: [
@@ -1300,9 +1310,9 @@ export const DEFAULT_LANGUAGE_PATTERNS: LanguagePatterns = {
       "GetFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
       "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
       "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
-      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
     ],
-    fileExtensions: [".cs"]
+    fileExtensions: [".cs"],
   },
   go: {
     patterns: [
@@ -1310,9 +1320,9 @@ export const DEFAULT_LANGUAGE_PATTERNS: LanguagePatterns = {
       "GetFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
       "flag\\s*:?=\\s*['\"]([^'\"]+)['\"],?",
       "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
-      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
     ],
-    fileExtensions: [".go"]
+    fileExtensions: [".go"],
   },
   php: {
     patterns: [
@@ -1320,10 +1330,10 @@ export const DEFAULT_LANGUAGE_PATTERNS: LanguagePatterns = {
       "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
       "\\$flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
       "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
-      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
     ],
-    fileExtensions: [".php"]
-  }
+    fileExtensions: [".php"],
+  },
 };
 
 /**
@@ -1400,26 +1410,26 @@ export interface FlagReport {
  */
 export async function scanRepository(
   config: CodeAnalysisConfig,
-  languagePatterns?: LanguagePatterns
+  languagePatterns?: LanguagePatterns,
 ): Promise<ScanResult> {
   const startTime = Date.now();
   const patterns = languagePatterns || DEFAULT_LANGUAGE_PATTERNS;
   const errors: string[] = [];
   const warnings: string[] = [];
-  
+
   console.log(`Starting repository scan of ${config.workspaceRoot}`);
-  
+
   try {
     // Collect source files with enhanced indexing
     const files = await collectSourceFilesWithIndexing(config.workspaceRoot, config);
     console.log(`Found ${files.length} source files to analyze`);
-    
+
     // Extract feature flags from all files
     const flagReferences = await extractFeatureFlags(files, patterns, config);
     console.log(`Extracted ${flagReferences.length} potential flag references`);
-    
+
     const processingTime = Date.now() - startTime;
-    
+
     const result: ScanResult = {
       totalFiles: files.length,
       processedFiles: files.length,
@@ -1427,15 +1437,15 @@ export async function scanRepository(
       errors,
       warnings,
       processingTime,
-      cacheUsed: false // Could be enhanced to track cache usage
+      cacheUsed: false, // Could be enhanced to track cache usage
     };
-    
+
     console.log(`Repository scan completed in ${(processingTime / 1000).toFixed(2)}s`);
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     errors.push(`Repository scan failed: ${message}`);
-    
+
     return {
       totalFiles: 0,
       processedFiles: 0,
@@ -1443,7 +1453,7 @@ export async function scanRepository(
       errors,
       warnings,
       processingTime: Date.now() - startTime,
-      cacheUsed: false
+      cacheUsed: false,
     };
   }
 }
@@ -1458,40 +1468,42 @@ export async function scanRepository(
 export async function extractFeatureFlags(
   files: string[],
   languagePatterns: LanguagePatterns,
-  config: CodeAnalysisConfig
+  config: CodeAnalysisConfig,
 ): Promise<FlagReference[]> {
   const flagReferences: FlagReference[] = [];
-  
+
   // Process files with controlled concurrency
   const semaphore = new Semaphore(config.concurrencyLimit);
   const batches = chunkArray(files, 100); // Process in batches for memory efficiency
-  
+
   console.log(`Extracting flags from ${files.length} files in ${batches.length} batches`);
-  
+
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
-    
+
     const batchResults = await Promise.all(
-      batch.map(file => 
-        semaphore.acquire(() => extractFlagsFromFile(file, languagePatterns))
-      )
+      batch.map((file) => semaphore.acquire(() => extractFlagsFromFile(file, languagePatterns))),
     );
-    
+
     // Flatten batch results
     for (const result of batchResults) {
       if (result) {
         flagReferences.push(...result);
       }
     }
-    
+
     // Progress reporting
     if (batchIndex % 10 === 0 || batch.length > 50) {
       const processed = (batchIndex + 1) * 100;
       const percentage = Math.min(100, (processed / files.length) * 100).toFixed(1);
-      console.log(`Flag extraction progress: ${percentage}% (${Math.min(processed, files.length)}/${files.length} files)`);
+      console.log(
+        `Flag extraction progress: ${percentage}% (${
+          Math.min(processed, files.length)
+        }/${files.length} files)`,
+      );
     }
   }
-  
+
   console.log(`Extracted ${flagReferences.length} flag references`);
   return flagReferences;
 }
@@ -1504,41 +1516,41 @@ export async function extractFeatureFlags(
  */
 async function extractFlagsFromFile(
   filePath: string,
-  languagePatterns: LanguagePatterns
+  languagePatterns: LanguagePatterns,
 ): Promise<FlagReference[] | null> {
   try {
     const content = await Deno.readTextFile(filePath);
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     const fileExt = extname(filePath).toLowerCase();
     const flagReferences: FlagReference[] = [];
-    
+
     // Determine language from file extension
     const language = getLanguageFromExtension(fileExt, languagePatterns);
     if (!language) {
       return null; // Skip unsupported file types
     }
-    
+
     const patterns = languagePatterns[language]?.patterns || [];
     let inBlockComment = false;
-    
+
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       const line = lines[lineIndex];
-      
+
       // Skip comments
       const [isComment, nextBlock] = isCommentLine(line, inBlockComment, fileExt);
       inBlockComment = nextBlock;
       if (isComment) continue;
-      
+
       // Apply each pattern to the line
       for (const pattern of patterns) {
-        const regex = new RegExp(pattern, 'gi');
+        const regex = new RegExp(pattern, "gi");
         let match;
-        
+
         while ((match = regex.exec(line)) !== null) {
           const flag = match[1]; // First capture group
           if (flag && flag.length > 2) { // Basic validation
             const confidence = calculateConfidence(flag, pattern, line, language);
-            
+
             flagReferences.push({
               flag,
               file: filePath,
@@ -1547,13 +1559,13 @@ async function extractFlagsFromFile(
               context: line.trim(),
               confidence,
               pattern,
-              language
+              language,
             });
           }
         }
       }
     }
-    
+
     return flagReferences;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1568,7 +1580,10 @@ async function extractFlagsFromFile(
  * @param languagePatterns Available language patterns
  * @returns Language identifier or null if not supported
  */
-function getLanguageFromExtension(extension: string, languagePatterns: LanguagePatterns): string | null {
+function getLanguageFromExtension(
+  extension: string,
+  languagePatterns: LanguagePatterns,
+): string | null {
   for (const [language, config] of Object.entries(languagePatterns)) {
     if (config.fileExtensions.includes(extension)) {
       return language;
@@ -1585,29 +1600,34 @@ function getLanguageFromExtension(extension: string, languagePatterns: LanguageP
  * @param language The programming language
  * @returns Confidence score between 0 and 1
  */
-function calculateConfidence(flag: string, pattern: string, context: string, language: string): number {
+function calculateConfidence(
+  flag: string,
+  pattern: string,
+  _context: string,
+  _language: string,
+): number {
   let confidence = 0.5; // Base confidence
-  
+
   // Increase confidence for common flag patterns
-  if (flag.includes('_flag') || flag.includes('feature_')) {
+  if (flag.includes("_flag") || flag.includes("feature_")) {
     confidence += 0.2;
   }
-  
+
   // Increase confidence for function call patterns
-  if (pattern.includes('isEnabled') || pattern.includes('getFlag')) {
+  if (pattern.includes("isEnabled") || pattern.includes("getFlag")) {
     confidence += 0.3;
   }
-  
+
   // Decrease confidence for very short or very long flag names
   if (flag.length < 3 || flag.length > 50) {
     confidence -= 0.2;
   }
-  
+
   // Increase confidence for typical flag naming conventions
   if (/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(flag)) {
     confidence += 0.1;
   }
-  
+
   return Math.max(0, Math.min(1, confidence));
 }
 
@@ -1619,7 +1639,7 @@ function calculateConfidence(flag: string, pattern: string, context: string, lan
  */
 export function validateFlagReferences(
   flagReferences: FlagReference[],
-  knownFlags?: string[]
+  knownFlags?: string[],
 ): {
   validReferences: FlagReference[];
   invalidReferences: FlagReference[];
@@ -1628,30 +1648,30 @@ export function validateFlagReferences(
   const validReferences: FlagReference[] = [];
   const invalidReferences: FlagReference[] = [];
   const issues: { [flag: string]: string[] } = {};
-  
+
   for (const reference of flagReferences) {
     const flagIssues: string[] = [];
-    
+
     // Validate flag name syntax
     if (!isValidFlagName(reference.flag)) {
-      flagIssues.push('Invalid flag name syntax');
+      flagIssues.push("Invalid flag name syntax");
     }
-    
+
     // Check confidence threshold
     if (reference.confidence < 0.3) {
-      flagIssues.push('Low confidence match');
+      flagIssues.push("Low confidence match");
     }
-    
+
     // Validate against known flags if provided
     if (knownFlags && !knownFlags.includes(reference.flag)) {
-      flagIssues.push('Flag not found in known flags list');
+      flagIssues.push("Flag not found in known flags list");
     }
-    
+
     // Check for suspicious patterns
-    if (reference.context.includes('console.log') || reference.context.includes('debug')) {
-      flagIssues.push('Found in debug/logging context - may be false positive');
+    if (reference.context.includes("console.log") || reference.context.includes("debug")) {
+      flagIssues.push("Found in debug/logging context - may be false positive");
     }
-    
+
     if (flagIssues.length > 0) {
       invalidReferences.push(reference);
       issues[reference.flag] = issues[reference.flag] || [];
@@ -1660,7 +1680,7 @@ export function validateFlagReferences(
       validReferences.push(reference);
     }
   }
-  
+
   return { validReferences, invalidReferences, issues };
 }
 
@@ -1674,23 +1694,23 @@ function isValidFlagName(flagName: string): boolean {
   if (!flagName || flagName.length < 2 || flagName.length > 100) {
     return false;
   }
-  
+
   // Should start with letter or underscore
   if (!/^[a-zA-Z_]/.test(flagName)) {
     return false;
   }
-  
+
   // Should only contain alphanumeric, underscore, and dash
   if (!/^[a-zA-Z0-9_-]+$/.test(flagName)) {
     return false;
   }
-  
+
   // Should not be a common false positive
-  const falsePositives = ['test', 'config', 'value', 'data', 'key', 'name', 'id', 'type'];
+  const falsePositives = ["test", "config", "value", "data", "key", "name", "id", "type"];
   if (falsePositives.includes(flagName.toLowerCase())) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -1704,62 +1724,69 @@ function isValidFlagName(flagName: string): boolean {
 export function generateFlagReport(
   scanResult: ScanResult,
   knownFlags: string[],
-  executionId: string
+  executionId: string,
 ): FlagReport {
   const startTime = Date.now();
-  
+
   // Validate flag references
   const validation = validateFlagReferences(scanResult.flagReferences, knownFlags);
-  
+
   // Group valid references by flag
-  const usedFlags: { [flag: string]: { references: FlagReference[], confidence: number, files: string[], patterns: string[] } } = {};
-  
+  const usedFlags: {
+    [flag: string]: {
+      references: FlagReference[];
+      confidence: number;
+      files: string[];
+      patterns: string[];
+    };
+  } = {};
+
   for (const ref of validation.validReferences) {
     if (!usedFlags[ref.flag]) {
       usedFlags[ref.flag] = {
         references: [],
         confidence: 0,
         files: [],
-        patterns: []
+        patterns: [],
       };
     }
-    
+
     usedFlags[ref.flag].references.push(ref);
     usedFlags[ref.flag].confidence = Math.max(usedFlags[ref.flag].confidence, ref.confidence);
-    
+
     if (!usedFlags[ref.flag].files.includes(ref.file)) {
       usedFlags[ref.flag].files.push(ref.file);
     }
-    
+
     if (!usedFlags[ref.flag].patterns.includes(ref.pattern)) {
       usedFlags[ref.flag].patterns.push(ref.pattern);
     }
   }
-  
+
   // Identify unused flags
   const usedFlagNames = Object.keys(usedFlags);
-  const unusedFlags = knownFlags.filter(flag => !usedFlagNames.includes(flag));
-  
+  const unusedFlags = knownFlags.filter((flag) => !usedFlagNames.includes(flag));
+
   // Identify flags with issues
-  const flagsWithIssues: { [flag: string]: { issues: string[], references: FlagReference[] } } = {};
-  
+  const flagsWithIssues: { [flag: string]: { issues: string[]; references: FlagReference[] } } = {};
+
   for (const [flag, issues] of Object.entries(validation.issues)) {
     flagsWithIssues[flag] = {
       issues: [...new Set(issues)], // Deduplicate issues
-      references: validation.invalidReferences.filter(ref => ref.flag === flag)
+      references: validation.invalidReferences.filter((ref) => ref.flag === flag),
     };
   }
-  
+
   // Generate language breakdown
-  const languageBreakdown: { [language: string]: { fileCount: number, flagCount: number } } = {};
-  
+  const languageBreakdown: { [language: string]: { fileCount: number; flagCount: number } } = {};
+
   for (const ref of validation.validReferences) {
     if (!languageBreakdown[ref.language]) {
       languageBreakdown[ref.language] = { fileCount: 0, flagCount: 0 };
     }
     languageBreakdown[ref.language].flagCount++;
   }
-  
+
   // Count unique files per language
   const filesByLanguage: { [language: string]: Set<string> } = {};
   for (const ref of validation.validReferences) {
@@ -1768,11 +1795,11 @@ export function generateFlagReport(
     }
     filesByLanguage[ref.language].add(ref.file);
   }
-  
+
   for (const [language, files] of Object.entries(filesByLanguage)) {
     languageBreakdown[language].fileCount = files.size;
   }
-  
+
   const report: FlagReport = {
     summary: {
       totalFlags: knownFlags.length,
@@ -1781,19 +1808,21 @@ export function generateFlagReport(
       flagsWithIssues: Object.keys(flagsWithIssues).length,
       totalReferences: validation.validReferences.length,
       filesScanned: scanResult.totalFiles,
-      processingTime: scanResult.processingTime
+      processingTime: scanResult.processingTime,
     },
     usedFlags,
     unusedFlags,
     flagsWithIssues,
     languageBreakdown,
     generatedAt: new Date().toISOString(),
-    executionId
+    executionId,
   };
-  
+
   const reportTime = Date.now() - startTime;
   console.log(`Flag report generated in ${reportTime}ms`);
-  console.log(`Summary: ${report.summary.usedFlags}/${report.summary.totalFlags} flags used, ${report.summary.unusedFlags} unused, ${report.summary.flagsWithIssues} with issues`);
-  
+  console.log(
+    `Summary: ${report.summary.usedFlags}/${report.summary.totalFlags} flags used, ${report.summary.unusedFlags} unused, ${report.summary.flagsWithIssues} with issues`,
+  );
+
   return report;
 }
