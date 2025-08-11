@@ -1,0 +1,395 @@
+{
+  "version": "1.0.0",
+  "description": "Default language-specific patterns for feature flag detection",
+  "languages": {
+    "typescript": {
+      "name": "TypeScript",
+      "patterns": [
+        {
+          "name": "optimizely_is_enabled",
+          "pattern": "isEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Optimizely isEnabled() method calls",
+          "confidence": 0.9
+        },
+        {
+          "name": "get_flag_function",
+          "pattern": "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Generic getFlag() function calls",
+          "confidence": 0.8
+        },
+        {
+          "name": "flag_assignment",
+          "pattern": "flag\\s*[=:]\\s*['\"]([^'\"]+)['\"],?",
+          "description": "Flag variable assignments",
+          "confidence": 0.6
+        },
+        {
+          "name": "flag_suffix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+          "description": "Variables ending with '_flag'",
+          "confidence": 0.7
+        },
+        {
+          "name": "feature_prefix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'feature'",
+          "confidence": 0.6
+        },
+        {
+          "name": "experiment_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*experiment[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'experiment'",
+          "confidence": 0.6
+        },
+        {
+          "name": "toggle_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*toggle[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'toggle'",
+          "confidence": 0.6
+        }
+      ],
+      "fileExtensions": [".ts", ".tsx"],
+      "commentPatterns": {
+        "singleLine": "//",
+        "blockStart": "/*",
+        "blockEnd": "*/"
+      }
+    },
+    "javascript": {
+      "name": "JavaScript",
+      "patterns": [
+        {
+          "name": "optimizely_is_enabled",
+          "pattern": "isEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Optimizely isEnabled() method calls",
+          "confidence": 0.9
+        },
+        {
+          "name": "get_flag_function",
+          "pattern": "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Generic getFlag() function calls",
+          "confidence": 0.8
+        },
+        {
+          "name": "flag_assignment",
+          "pattern": "flag\\s*[=:]\\s*['\"]([^'\"]+)['\"],?",
+          "description": "Flag variable assignments",
+          "confidence": 0.6
+        },
+        {
+          "name": "flag_suffix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+          "description": "Variables ending with '_flag'",
+          "confidence": 0.7
+        },
+        {
+          "name": "feature_prefix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'feature'",
+          "confidence": 0.6
+        },
+        {
+          "name": "experiment_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*experiment[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'experiment'",
+          "confidence": 0.6
+        },
+        {
+          "name": "toggle_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*toggle[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'toggle'",
+          "confidence": 0.6
+        }
+      ],
+      "fileExtensions": [".js", ".jsx", ".mjs", ".cjs"],
+      "commentPatterns": {
+        "singleLine": "//",
+        "blockStart": "/*",
+        "blockEnd": "*/"
+      }
+    },
+    "python": {
+      "name": "Python",
+      "patterns": [
+        {
+          "name": "optimizely_is_enabled",
+          "pattern": "is_enabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Optimizely is_enabled() method calls",
+          "confidence": 0.9
+        },
+        {
+          "name": "get_flag_function",
+          "pattern": "get_flag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Generic get_flag() function calls",
+          "confidence": 0.8
+        },
+        {
+          "name": "flag_assignment",
+          "pattern": "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
+          "description": "Flag variable assignments",
+          "confidence": 0.6
+        },
+        {
+          "name": "flag_suffix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+          "description": "Variables ending with '_flag'",
+          "confidence": 0.7
+        },
+        {
+          "name": "feature_prefix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'feature'",
+          "confidence": 0.6
+        },
+        {
+          "name": "experiment_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*experiment[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'experiment'",
+          "confidence": 0.6
+        },
+        {
+          "name": "toggle_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*toggle[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'toggle'",
+          "confidence": 0.6
+        }
+      ],
+      "fileExtensions": [".py"],
+      "commentPatterns": {
+        "singleLine": "#",
+        "blockStart": "\"\"\"",
+        "blockEnd": "\"\"\"",
+        "blockStartAlt": "'''",
+        "blockEndAlt": "'''"
+      }
+    },
+    "java": {
+      "name": "Java",
+      "patterns": [
+        {
+          "name": "optimizely_is_enabled",
+          "pattern": "isEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Optimizely isEnabled() method calls",
+          "confidence": 0.9
+        },
+        {
+          "name": "get_flag_function",
+          "pattern": "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Generic getFlag() function calls",
+          "confidence": 0.8
+        },
+        {
+          "name": "flag_assignment",
+          "pattern": "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
+          "description": "Flag variable assignments",
+          "confidence": 0.6
+        },
+        {
+          "name": "flag_suffix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+          "description": "Variables ending with '_flag'",
+          "confidence": 0.7
+        },
+        {
+          "name": "feature_prefix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'feature'",
+          "confidence": 0.6
+        },
+        {
+          "name": "experiment_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*experiment[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'experiment'",
+          "confidence": 0.6
+        },
+        {
+          "name": "toggle_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*toggle[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'toggle'",
+          "confidence": 0.6
+        }
+      ],
+      "fileExtensions": [".java"],
+      "commentPatterns": {
+        "singleLine": "//",
+        "blockStart": "/*",
+        "blockEnd": "*/"
+      }
+    },
+    "csharp": {
+      "name": "C#",
+      "patterns": [
+        {
+          "name": "optimizely_is_enabled",
+          "pattern": "IsEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Optimizely IsEnabled() method calls",
+          "confidence": 0.9
+        },
+        {
+          "name": "get_flag_function",
+          "pattern": "GetFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Generic GetFlag() function calls",
+          "confidence": 0.8
+        },
+        {
+          "name": "flag_assignment",
+          "pattern": "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
+          "description": "Flag variable assignments",
+          "confidence": 0.6
+        },
+        {
+          "name": "flag_suffix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+          "description": "Variables ending with '_flag'",
+          "confidence": 0.7
+        },
+        {
+          "name": "feature_prefix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'feature'",
+          "confidence": 0.6
+        },
+        {
+          "name": "experiment_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*experiment[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'experiment'",
+          "confidence": 0.6
+        },
+        {
+          "name": "toggle_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*toggle[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'toggle'",
+          "confidence": 0.6
+        }
+      ],
+      "fileExtensions": [".cs"],
+      "commentPatterns": {
+        "singleLine": "//",
+        "blockStart": "/*",
+        "blockEnd": "*/"
+      }
+    },
+    "go": {
+      "name": "Go",
+      "patterns": [
+        {
+          "name": "optimizely_is_enabled",
+          "pattern": "IsEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Optimizely IsEnabled() method calls",
+          "confidence": 0.9
+        },
+        {
+          "name": "get_flag_function",
+          "pattern": "GetFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Generic GetFlag() function calls",
+          "confidence": 0.8
+        },
+        {
+          "name": "flag_assignment",
+          "pattern": "flag\\s*:?=\\s*['\"]([^'\"]+)['\"],?",
+          "description": "Flag variable assignments",
+          "confidence": 0.6
+        },
+        {
+          "name": "flag_suffix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+          "description": "Variables ending with '_flag'",
+          "confidence": 0.7
+        },
+        {
+          "name": "feature_prefix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'feature'",
+          "confidence": 0.6
+        },
+        {
+          "name": "experiment_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*experiment[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'experiment'",
+          "confidence": 0.6
+        },
+        {
+          "name": "toggle_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*toggle[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'toggle'",
+          "confidence": 0.6
+        }
+      ],
+      "fileExtensions": [".go"],
+      "commentPatterns": {
+        "singleLine": "//",
+        "blockStart": "/*",
+        "blockEnd": "*/"
+      }
+    },
+    "php": {
+      "name": "PHP",
+      "patterns": [
+        {
+          "name": "optimizely_is_enabled",
+          "pattern": "isEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Optimizely isEnabled() method calls",
+          "confidence": 0.9
+        },
+        {
+          "name": "get_flag_function",
+          "pattern": "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+          "description": "Generic getFlag() function calls",
+          "confidence": 0.8
+        },
+        {
+          "name": "flag_assignment",
+          "pattern": "\\$flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
+          "description": "Flag variable assignments",
+          "confidence": 0.6
+        },
+        {
+          "name": "flag_suffix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+          "description": "Variables ending with '_flag'",
+          "confidence": 0.7
+        },
+        {
+          "name": "feature_prefix_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'feature'",
+          "confidence": 0.6
+        },
+        {
+          "name": "experiment_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*experiment[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'experiment'",
+          "confidence": 0.6
+        },
+        {
+          "name": "toggle_pattern",
+          "pattern": "['\"]([a-zA-Z0-9_-]*toggle[a-zA-Z0-9_-]*)['\"],?",
+          "description": "Variables containing 'toggle'",
+          "confidence": 0.6
+        }
+      ],
+      "fileExtensions": [".php"],
+      "commentPatterns": {
+        "singleLine": "//",
+        "singleLineAlt": "#",
+        "blockStart": "/*",
+        "blockEnd": "*/"
+      }
+    }
+  },
+  "defaultPatterns": {
+    "genericPatterns": [
+      {
+        "name": "generic_flag_reference",
+        "pattern": "['\"]([a-zA-Z][a-zA-Z0-9_-]{2,})['\"],?",
+        "description": "Generic string pattern that might be a flag",
+        "confidence": 0.3
+      }
+    ]
+  },
+  "metadata": {
+    "createdBy": "feature-flag-sync-system",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  }
+}

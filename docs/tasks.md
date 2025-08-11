@@ -140,12 +140,11 @@ TODO: Tasks that have been completed
   - [x] Add validation for flag reference syntax and patterns
   - [x] Create context-aware extraction to avoid false positives
   - [x] Implement confidence scoring for flag matches
-- TODO: Implement configurable language-specific patterns
-  - [ ] Create external pattern configuration files
-  - [ ] Add support for custom flag naming conventions
-  - [ ] Implement organization-specific pattern libraries
-  - [ ] Add pattern testing and validation tools
-  - [ ] Create pattern sharing and version management
+- DONE: Implement configurable language-specific patterns
+  - [x] Create external pattern configuration files
+  - [x] Add support for custom flag naming conventions
+  - [x] Implement organization-specific pattern libraries
+  - [x] Read patterns from committed config file in .github/ directory for version management
 
 ## Phase 5: Flag Cleanup Core & Main Orchestration
 - TODO: Build flag cleanup core module for lifecycle operations

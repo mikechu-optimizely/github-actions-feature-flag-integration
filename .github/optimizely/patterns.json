@@ -1,0 +1,104 @@
+{
+  "version": "1.0.0",
+  "description": "Optimizely feature flag patterns for this repository - managed under version control in .github/optimizely/",
+  "organizationId": "github-actions-feature-flag-integration",
+  "organizationName": "Feature Flag Integration Project",
+  "extends": ["default-patterns.json"],
+  "customNamingConventions": {
+    "flagPrefix": "ff_",
+    "experimentPrefix": "exp_",
+    "featurePrefix": "feature_",
+    "testPrefix": "test_flag_"
+  },
+  "languages": {
+    "typescript": {
+      "name": "TypeScript (Project Specific)",
+      "patterns": [
+        {
+          "name": "optimizely_sdk_is_enabled",
+          "pattern": "optimizely\\.isFeatureEnabled\\s*\\(['\"]([^'\"]+)['\"]",
+          "description": "Optimizely SDK isFeatureEnabled calls",
+          "confidence": 0.95,
+          "tags": ["optimizely", "sdk"]
+        },
+        {
+          "name": "feature_flag_config",
+          "pattern": "featureFlags\\s*:\\s*\\{[^}]*['\"]([a-zA-Z0-9_-]+)['\"]",
+          "description": "Feature flags defined in config objects",
+          "confidence": 0.8,
+          "tags": ["config", "object"]
+        },
+        {
+          "name": "project_flag_prefix",
+          "pattern": "['\"]((ff_|feature_|exp_)[a-zA-Z0-9_-]+)['\"],?",
+          "description": "Project-specific flag prefixes",
+          "confidence": 0.85,
+          "tags": ["prefix", "project"]
+        }
+      ],
+      "fileExtensions": [".ts", ".tsx"],
+      "commentPatterns": {
+        "singleLine": "//",
+        "blockStart": "/*",
+        "blockEnd": "*/"
+      }
+    },
+    "javascript": {
+      "name": "JavaScript (Project Specific)",
+      "patterns": [
+        {
+          "name": "optimizely_sdk_is_enabled",
+          "pattern": "optimizely\\.isFeatureEnabled\\s*\\(['\"]([^'\"]+)['\"]",
+          "description": "Optimizely SDK isFeatureEnabled calls",
+          "confidence": 0.95,
+          "tags": ["optimizely", "sdk"]
+        },
+        {
+          "name": "project_flag_prefix",
+          "pattern": "['\"]((ff_|feature_|exp_)[a-zA-Z0-9_-]+)['\"],?",
+          "description": "Project-specific flag prefixes",
+          "confidence": 0.85,
+          "tags": ["prefix", "project"]
+        }
+      ],
+      "fileExtensions": [".js", ".jsx", ".mjs", ".cjs"],
+      "commentPatterns": {
+        "singleLine": "//",
+        "blockStart": "/*",
+        "blockEnd": "*/"
+      }
+    }
+  },
+  "validationRules": {
+    "minFlagLength": 3,
+    "maxFlagLength": 64,
+    "allowedCharacters": "^[a-zA-Z0-9_-]+$",
+    "requiredPrefixes": ["ff_", "feature_", "exp_"],
+    "forbiddenPatterns": ["temp", "debug", "test_temp"]
+  },
+  "contextualRules": {
+    "highConfidenceFiles": [
+      "**/src/modules/**",
+      "**/flags/**",
+      "**/features/**"
+    ],
+    "lowConfidenceFiles": [
+      "**/test/**",
+      "**/tests/**",
+      "**/spec/**",
+      "**/mock/**",
+      "**/fixtures/**",
+      "**/docs/**"
+    ]
+  },
+  "metadata": {
+    "createdBy": "pattern-config-manager",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0",
+    "lastUpdated": "2024-01-01T00:00:00Z",
+    "updatedBy": "pattern-config-manager",
+    "repository": "github-actions-feature-flag-integration",
+    "branch": "main",
+    "commitHash": "placeholder"
+  }
+}
