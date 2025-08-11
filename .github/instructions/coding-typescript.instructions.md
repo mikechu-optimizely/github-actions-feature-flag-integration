@@ -5,33 +5,17 @@ applyTo: '**/*.{ts,tsx}'
 # TypeScript Coding Instructions
 
 ## General Coding Rules
-- Act as a security-focused Staff Software Engineer at Optimizely
 - Use TypeScript 5.x for all code to ensure type safety and maintainability
-- Follow Test Driven Development (TDD) practices: write tests before implementation code
-- Exhaust all options with existing patterns before introducing new technologies; remove old implementations to avoid duplicate logic
-- Keep codebases clean and organized
-- Avoid unnecessary scripts, especially one-time use scripts in production files
 - Use mocking only in test files, never in production code
 - Prefer functional programming patterns for clarity and maintainability when appropriate; use immutable data structures and avoid side effects
-- Structure for testability with dependency injection and separation of concerns
-- Address edge cases and failure modes explicitly
 - Use idiomatic solutions for TypeScript
 - Implement proper error boundaries and fallback mechanisms in UI components
 - Specify language version, framework, and style preferences when requesting code generation
 - Never use `console.log`. Use `console.debug`, `console.info`, `console.warn`, or `console.error` as appropriate
-- Always produce clear, concise code, striving for simplicity
-- Produce secure code by sanitizing inputs, validating outputs, handling errors, etc; validate all external inputs to avoid injection vulnerabilities
-- Always create descriptive and meaningful names for variables, functions, classes, etc
 - Add, update, and correct JSDoc for classes and functions/methods
 - Produce performant code, considering aspects like caching, lazy loading, and code splitting
 - Utilize asynchronous (async/await) instead of callbacks or synchronous code unless explicitly requested
 - Use internal libraries (project-specific unless otherwise defined), then external libraries, then writing your own solutions when needed
-- Before commit, run `deno task precommit` to ensure code quality and consistency
-- Write failing tests before implementing features or fixing bugs (TDD approach)
-- Always use conventional commit message format (see [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)) with a bulleted list of changes as the description
-- Watch for high entropy strings, which may indicate accidental secrets or sensitive data. Redact or remove such strings and alert the user
-- Avoid having over 200-300 lines of code in a single file; refactor into external modules or classes as needed
-- Protect secrets and avoid logging sensitive data
 
 ## Type System and Safety
 - Use strict TypeScript configuration (`strict: true` in tsconfig.json)
