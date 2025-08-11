@@ -1239,3 +1239,561 @@ class Semaphore {
     });
   }
 }
+
+/**
+ * Language-specific patterns for flag reference extraction.
+ */
+export interface LanguagePatterns {
+  [language: string]: {
+    patterns: string[];
+    fileExtensions: string[];
+  };
+}
+
+/**
+ * Default language patterns for feature flag extraction.
+ */
+export const DEFAULT_LANGUAGE_PATTERNS: LanguagePatterns = {
+  typescript: {
+    patterns: [
+      "isEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "flag\\s*[=:]\\s*['\"]([^'\"]+)['\"],?",
+      "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+    ],
+    fileExtensions: [".ts", ".tsx"]
+  },
+  javascript: {
+    patterns: [
+      "isEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "flag\\s*[=:]\\s*['\"]([^'\"]+)['\"],?",
+      "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+    ],
+    fileExtensions: [".js", ".jsx", ".mjs", ".cjs"]
+  },
+  python: {
+    patterns: [
+      "is_enabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "get_flag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
+      "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+    ],
+    fileExtensions: [".py"]
+  },
+  java: {
+    patterns: [
+      "isEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
+      "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+    ],
+    fileExtensions: [".java"]
+  },
+  csharp: {
+    patterns: [
+      "IsEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "GetFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
+      "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+    ],
+    fileExtensions: [".cs"]
+  },
+  go: {
+    patterns: [
+      "IsEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "GetFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "flag\\s*:?=\\s*['\"]([^'\"]+)['\"],?",
+      "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+    ],
+    fileExtensions: [".go"]
+  },
+  php: {
+    patterns: [
+      "isEnabled\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "getFlag\\s*\\(['\"]([^'\"]+)['\"]\\)",
+      "\\$flag\\s*=\\s*['\"]([^'\"]+)['\"],?",
+      "['\"]([a-zA-Z0-9_-]+_flag)['\"],?",
+      "['\"]([a-zA-Z0-9_-]*feature[a-zA-Z0-9_-]*)['\"],?"
+    ],
+    fileExtensions: [".php"]
+  }
+};
+
+/**
+ * Flag reference with metadata for validation and reporting.
+ */
+export interface FlagReference {
+  flag: string;
+  file: string;
+  line: number;
+  column?: number;
+  context: string;
+  confidence: number; // 0-1 confidence score
+  pattern: string; // Pattern that matched
+  language: string;
+}
+
+/**
+ * Repository scan result.
+ */
+export interface ScanResult {
+  totalFiles: number;
+  processedFiles: number;
+  flagReferences: FlagReference[];
+  errors: string[];
+  warnings: string[];
+  processingTime: number;
+  cacheUsed: boolean;
+}
+
+/**
+ * Flag usage report.
+ */
+export interface FlagReport {
+  summary: {
+    totalFlags: number;
+    usedFlags: number;
+    unusedFlags: number;
+    flagsWithIssues: number;
+    totalReferences: number;
+    filesScanned: number;
+    processingTime: number;
+  };
+  usedFlags: {
+    [flag: string]: {
+      references: FlagReference[];
+      confidence: number;
+      files: string[];
+      patterns: string[];
+    };
+  };
+  unusedFlags: string[];
+  flagsWithIssues: {
+    [flag: string]: {
+      issues: string[];
+      references: FlagReference[];
+    };
+  };
+  languageBreakdown: {
+    [language: string]: {
+      fileCount: number;
+      flagCount: number;
+    };
+  };
+  generatedAt: string;
+  executionId: string;
+}
+
+/**
+ * Recursively scan repository for source files and analyze feature flag usage.
+ * This is the main entry point for repository analysis.
+ * @param config Code analysis configuration
+ * @param languagePatterns Optional custom language patterns
+ * @returns Scan result with all flag references found
+ */
+export async function scanRepository(
+  config: CodeAnalysisConfig,
+  languagePatterns?: LanguagePatterns
+): Promise<ScanResult> {
+  const startTime = Date.now();
+  const patterns = languagePatterns || DEFAULT_LANGUAGE_PATTERNS;
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  console.log(`Starting repository scan of ${config.workspaceRoot}`);
+  
+  try {
+    // Collect source files with enhanced indexing
+    const files = await collectSourceFilesWithIndexing(config.workspaceRoot, config);
+    console.log(`Found ${files.length} source files to analyze`);
+    
+    // Extract feature flags from all files
+    const flagReferences = await extractFeatureFlags(files, patterns, config);
+    console.log(`Extracted ${flagReferences.length} potential flag references`);
+    
+    const processingTime = Date.now() - startTime;
+    
+    const result: ScanResult = {
+      totalFiles: files.length,
+      processedFiles: files.length,
+      flagReferences,
+      errors,
+      warnings,
+      processingTime,
+      cacheUsed: false // Could be enhanced to track cache usage
+    };
+    
+    console.log(`Repository scan completed in ${(processingTime / 1000).toFixed(2)}s`);
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    errors.push(`Repository scan failed: ${message}`);
+    
+    return {
+      totalFiles: 0,
+      processedFiles: 0,
+      flagReferences: [],
+      errors,
+      warnings,
+      processingTime: Date.now() - startTime,
+      cacheUsed: false
+    };
+  }
+}
+
+/**
+ * Extract feature flags from source files using configurable language patterns.
+ * @param files Array of file paths to analyze
+ * @param languagePatterns Language-specific extraction patterns
+ * @param config Code analysis configuration
+ * @returns Array of flag references found
+ */
+export async function extractFeatureFlags(
+  files: string[],
+  languagePatterns: LanguagePatterns,
+  config: CodeAnalysisConfig
+): Promise<FlagReference[]> {
+  const flagReferences: FlagReference[] = [];
+  
+  // Process files with controlled concurrency
+  const semaphore = new Semaphore(config.concurrencyLimit);
+  const batches = chunkArray(files, 100); // Process in batches for memory efficiency
+  
+  console.log(`Extracting flags from ${files.length} files in ${batches.length} batches`);
+  
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    
+    const batchResults = await Promise.all(
+      batch.map(file => 
+        semaphore.acquire(() => extractFlagsFromFile(file, languagePatterns))
+      )
+    );
+    
+    // Flatten batch results
+    for (const result of batchResults) {
+      if (result) {
+        flagReferences.push(...result);
+      }
+    }
+    
+    // Progress reporting
+    if (batchIndex % 10 === 0 || batch.length > 50) {
+      const processed = (batchIndex + 1) * 100;
+      const percentage = Math.min(100, (processed / files.length) * 100).toFixed(1);
+      console.log(`Flag extraction progress: ${percentage}% (${Math.min(processed, files.length)}/${files.length} files)`);
+    }
+  }
+  
+  console.log(`Extracted ${flagReferences.length} flag references`);
+  return flagReferences;
+}
+
+/**
+ * Extract flags from a single file using language-specific patterns.
+ * @param filePath Path to the file to analyze
+ * @param languagePatterns Language-specific extraction patterns
+ * @returns Array of flag references found in the file
+ */
+async function extractFlagsFromFile(
+  filePath: string,
+  languagePatterns: LanguagePatterns
+): Promise<FlagReference[] | null> {
+  try {
+    const content = await Deno.readTextFile(filePath);
+    const lines = content.split('\n');
+    const fileExt = extname(filePath).toLowerCase();
+    const flagReferences: FlagReference[] = [];
+    
+    // Determine language from file extension
+    const language = getLanguageFromExtension(fileExt, languagePatterns);
+    if (!language) {
+      return null; // Skip unsupported file types
+    }
+    
+    const patterns = languagePatterns[language]?.patterns || [];
+    let inBlockComment = false;
+    
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex];
+      
+      // Skip comments
+      const [isComment, nextBlock] = isCommentLine(line, inBlockComment, fileExt);
+      inBlockComment = nextBlock;
+      if (isComment) continue;
+      
+      // Apply each pattern to the line
+      for (const pattern of patterns) {
+        const regex = new RegExp(pattern, 'gi');
+        let match;
+        
+        while ((match = regex.exec(line)) !== null) {
+          const flag = match[1]; // First capture group
+          if (flag && flag.length > 2) { // Basic validation
+            const confidence = calculateConfidence(flag, pattern, line, language);
+            
+            flagReferences.push({
+              flag,
+              file: filePath,
+              line: lineIndex + 1,
+              column: match.index,
+              context: line.trim(),
+              confidence,
+              pattern,
+              language
+            });
+          }
+        }
+      }
+    }
+    
+    return flagReferences;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Warning: Could not extract flags from ${filePath}: ${message}`);
+    return null;
+  }
+}
+
+/**
+ * Determine programming language from file extension.
+ * @param extension File extension (e.g., '.ts', '.py')
+ * @param languagePatterns Available language patterns
+ * @returns Language identifier or null if not supported
+ */
+function getLanguageFromExtension(extension: string, languagePatterns: LanguagePatterns): string | null {
+  for (const [language, config] of Object.entries(languagePatterns)) {
+    if (config.fileExtensions.includes(extension)) {
+      return language;
+    }
+  }
+  return null;
+}
+
+/**
+ * Calculate confidence score for a flag match.
+ * @param flag The extracted flag name
+ * @param pattern The pattern that matched
+ * @param context The line context
+ * @param language The programming language
+ * @returns Confidence score between 0 and 1
+ */
+function calculateConfidence(flag: string, pattern: string, context: string, language: string): number {
+  let confidence = 0.5; // Base confidence
+  
+  // Increase confidence for common flag patterns
+  if (flag.includes('_flag') || flag.includes('feature_')) {
+    confidence += 0.2;
+  }
+  
+  // Increase confidence for function call patterns
+  if (pattern.includes('isEnabled') || pattern.includes('getFlag')) {
+    confidence += 0.3;
+  }
+  
+  // Decrease confidence for very short or very long flag names
+  if (flag.length < 3 || flag.length > 50) {
+    confidence -= 0.2;
+  }
+  
+  // Increase confidence for typical flag naming conventions
+  if (/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(flag)) {
+    confidence += 0.1;
+  }
+  
+  return Math.max(0, Math.min(1, confidence));
+}
+
+/**
+ * Validate flag references for syntax and pattern correctness.
+ * @param flagReferences Array of flag references to validate
+ * @param knownFlags Optional array of known valid flags for validation
+ * @returns Validation results with issues identified
+ */
+export function validateFlagReferences(
+  flagReferences: FlagReference[],
+  knownFlags?: string[]
+): {
+  validReferences: FlagReference[];
+  invalidReferences: FlagReference[];
+  issues: { [flag: string]: string[] };
+} {
+  const validReferences: FlagReference[] = [];
+  const invalidReferences: FlagReference[] = [];
+  const issues: { [flag: string]: string[] } = {};
+  
+  for (const reference of flagReferences) {
+    const flagIssues: string[] = [];
+    
+    // Validate flag name syntax
+    if (!isValidFlagName(reference.flag)) {
+      flagIssues.push('Invalid flag name syntax');
+    }
+    
+    // Check confidence threshold
+    if (reference.confidence < 0.3) {
+      flagIssues.push('Low confidence match');
+    }
+    
+    // Validate against known flags if provided
+    if (knownFlags && !knownFlags.includes(reference.flag)) {
+      flagIssues.push('Flag not found in known flags list');
+    }
+    
+    // Check for suspicious patterns
+    if (reference.context.includes('console.log') || reference.context.includes('debug')) {
+      flagIssues.push('Found in debug/logging context - may be false positive');
+    }
+    
+    if (flagIssues.length > 0) {
+      invalidReferences.push(reference);
+      issues[reference.flag] = issues[reference.flag] || [];
+      issues[reference.flag].push(...flagIssues);
+    } else {
+      validReferences.push(reference);
+    }
+  }
+  
+  return { validReferences, invalidReferences, issues };
+}
+
+/**
+ * Validate if a flag name follows common naming conventions.
+ * @param flagName Flag name to validate
+ * @returns True if the flag name is valid
+ */
+function isValidFlagName(flagName: string): boolean {
+  // Basic validation rules
+  if (!flagName || flagName.length < 2 || flagName.length > 100) {
+    return false;
+  }
+  
+  // Should start with letter or underscore
+  if (!/^[a-zA-Z_]/.test(flagName)) {
+    return false;
+  }
+  
+  // Should only contain alphanumeric, underscore, and dash
+  if (!/^[a-zA-Z0-9_-]+$/.test(flagName)) {
+    return false;
+  }
+  
+  // Should not be a common false positive
+  const falsePositives = ['test', 'config', 'value', 'data', 'key', 'name', 'id', 'type'];
+  if (falsePositives.includes(flagName.toLowerCase())) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Generate comprehensive flag usage report from scan results.
+ * @param scanResult Repository scan results
+ * @param knownFlags Array of known flags from Optimizely
+ * @param executionId Unique identifier for this execution
+ * @returns Comprehensive flag usage report
+ */
+export function generateFlagReport(
+  scanResult: ScanResult,
+  knownFlags: string[],
+  executionId: string
+): FlagReport {
+  const startTime = Date.now();
+  
+  // Validate flag references
+  const validation = validateFlagReferences(scanResult.flagReferences, knownFlags);
+  
+  // Group valid references by flag
+  const usedFlags: { [flag: string]: { references: FlagReference[], confidence: number, files: string[], patterns: string[] } } = {};
+  
+  for (const ref of validation.validReferences) {
+    if (!usedFlags[ref.flag]) {
+      usedFlags[ref.flag] = {
+        references: [],
+        confidence: 0,
+        files: [],
+        patterns: []
+      };
+    }
+    
+    usedFlags[ref.flag].references.push(ref);
+    usedFlags[ref.flag].confidence = Math.max(usedFlags[ref.flag].confidence, ref.confidence);
+    
+    if (!usedFlags[ref.flag].files.includes(ref.file)) {
+      usedFlags[ref.flag].files.push(ref.file);
+    }
+    
+    if (!usedFlags[ref.flag].patterns.includes(ref.pattern)) {
+      usedFlags[ref.flag].patterns.push(ref.pattern);
+    }
+  }
+  
+  // Identify unused flags
+  const usedFlagNames = Object.keys(usedFlags);
+  const unusedFlags = knownFlags.filter(flag => !usedFlagNames.includes(flag));
+  
+  // Identify flags with issues
+  const flagsWithIssues: { [flag: string]: { issues: string[], references: FlagReference[] } } = {};
+  
+  for (const [flag, issues] of Object.entries(validation.issues)) {
+    flagsWithIssues[flag] = {
+      issues: [...new Set(issues)], // Deduplicate issues
+      references: validation.invalidReferences.filter(ref => ref.flag === flag)
+    };
+  }
+  
+  // Generate language breakdown
+  const languageBreakdown: { [language: string]: { fileCount: number, flagCount: number } } = {};
+  
+  for (const ref of validation.validReferences) {
+    if (!languageBreakdown[ref.language]) {
+      languageBreakdown[ref.language] = { fileCount: 0, flagCount: 0 };
+    }
+    languageBreakdown[ref.language].flagCount++;
+  }
+  
+  // Count unique files per language
+  const filesByLanguage: { [language: string]: Set<string> } = {};
+  for (const ref of validation.validReferences) {
+    if (!filesByLanguage[ref.language]) {
+      filesByLanguage[ref.language] = new Set();
+    }
+    filesByLanguage[ref.language].add(ref.file);
+  }
+  
+  for (const [language, files] of Object.entries(filesByLanguage)) {
+    languageBreakdown[language].fileCount = files.size;
+  }
+  
+  const report: FlagReport = {
+    summary: {
+      totalFlags: knownFlags.length,
+      usedFlags: usedFlagNames.length,
+      unusedFlags: unusedFlags.length,
+      flagsWithIssues: Object.keys(flagsWithIssues).length,
+      totalReferences: validation.validReferences.length,
+      filesScanned: scanResult.totalFiles,
+      processingTime: scanResult.processingTime
+    },
+    usedFlags,
+    unusedFlags,
+    flagsWithIssues,
+    languageBreakdown,
+    generatedAt: new Date().toISOString(),
+    executionId
+  };
+  
+  const reportTime = Date.now() - startTime;
+  console.log(`Flag report generated in ${reportTime}ms`);
+  console.log(`Summary: ${report.summary.usedFlags}/${report.summary.totalFlags} flags used, ${report.summary.unusedFlags} unused, ${report.summary.flagsWithIssues} with issues`);
+  
+  return report;
+}

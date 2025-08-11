@@ -1,11 +1,17 @@
 import {
   assertEquals,
   assertStringIncludes,
+  assert,
 } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import {
   collectSourceFilesWithConfig,
   findFlagUsagesInCodebase,
   findFlagUsagesWithConfig,
+  scanRepository,
+  extractFeatureFlags,
+  validateFlagReferences,
+  generateFlagReport,
+  DEFAULT_LANGUAGE_PATTERNS,
 } from "./code-analysis.ts";
 import { join } from "https://deno.land/std@0.224.0/path/mod.ts";
 import { CodeAnalysisConfig } from "../types/config.ts";
@@ -79,6 +85,211 @@ Deno.test("findFlagUsagesInCodebase finds usages and ignores comments", async ()
       true,
     );
   });
+});
+
+Deno.test("scanRepository performs comprehensive repository analysis", async () => {
+  const files = {
+    "src/main.ts": `
+      // This is a comment with flag: feature_foo
+      const used = isEnabled('feature_foo');
+      if (getFlag('feature_bar')) {
+        doSomething();
+      }
+    `,
+    "src/helper.py": `
+      # Python comment with feature_baz
+      if is_enabled('feature_baz'):
+          pass
+    `,
+    "src/utils.js": `
+      const flag = 'feature_test';
+      if (isEnabled(flag)) {
+        console.log('enabled');
+      }
+    `,
+  };
+
+  const config: CodeAnalysisConfig = {
+    workspaceRoot: "/tmp",
+    excludePatterns: ["**/*.md", "**/node_modules/**"],
+    languages: ["typescript", "javascript", "python"],
+    concurrencyLimit: 5,
+    maxFileSize: 1024 * 1024,
+  };
+
+  await withTempFiles(files, async (dir) => {
+    const scanResult = await scanRepository({
+      ...config,
+      workspaceRoot: dir,
+    });
+
+    // Should successfully scan all files
+    assertEquals(scanResult.totalFiles, 3);
+    assertEquals(scanResult.processedFiles, 3);
+    assertEquals(scanResult.errors.length, 0);
+    
+    // Should find flag references
+    assert(scanResult.flagReferences.length > 0);
+    
+    // Should have processing time
+    assert(scanResult.processingTime > 0);
+  });
+});
+
+Deno.test("extractFeatureFlags finds flags using language patterns", async () => {
+  const files = {
+    "main.ts": `
+      const enabled = isEnabled('typescript_flag');
+      if (getFlag('another_feature')) {
+        doSomething();
+      }
+    `,
+    "script.py": `
+      if is_enabled('python_flag'):
+          pass
+    `,
+  };
+
+  const config: CodeAnalysisConfig = {
+    workspaceRoot: "/tmp",
+    excludePatterns: [],
+    languages: ["typescript", "python"],
+    concurrencyLimit: 5,
+  };
+
+  await withTempFiles(files, async (dir) => {
+    const filePaths = [
+      join(dir, "main.ts"),
+      join(dir, "script.py"),
+    ];
+    
+    const { DEFAULT_LANGUAGE_PATTERNS } = await import("./code-analysis.ts");
+    
+    const flagReferences = await extractFeatureFlags(
+      filePaths,
+      DEFAULT_LANGUAGE_PATTERNS,
+      config
+    );
+
+    // Should find multiple flag references
+    assert(flagReferences.length >= 3);
+    
+    // Should have proper metadata
+    for (const ref of flagReferences) {
+      assert(ref.flag.length > 0);
+      assert(ref.line > 0);
+      assert(ref.confidence >= 0 && ref.confidence <= 1);
+      assert(ref.language.length > 0);
+    }
+  });
+});
+
+Deno.test("validateFlagReferences identifies valid and invalid references", async () => {
+  const { validateFlagReferences } = await import("./code-analysis.ts");
+  
+  const flagReferences = [
+    {
+      flag: "valid_feature_flag",
+      file: "test.ts",
+      line: 1,
+      context: "isEnabled('valid_feature_flag')",
+      confidence: 0.8,
+      pattern: "isEnabled",
+      language: "typescript"
+    },
+    {
+      flag: "x", // Too short
+      file: "test.ts",
+      line: 2,
+      context: "isEnabled('x')",
+      confidence: 0.2, // Low confidence
+      pattern: "isEnabled",
+      language: "typescript"
+    },
+    {
+      flag: "unknown_flag",
+      file: "test.ts",
+      line: 3,
+      context: "isEnabled('unknown_flag')",
+      confidence: 0.9,
+      pattern: "isEnabled",
+      language: "typescript"
+    }
+  ];
+  
+  const knownFlags = ["valid_feature_flag", "another_known_flag"];
+  
+  const validation = validateFlagReferences(flagReferences, knownFlags);
+  
+  // Should identify valid references
+  assertEquals(validation.validReferences.length, 1);
+  assertEquals(validation.validReferences[0].flag, "valid_feature_flag");
+  
+  // Should identify invalid references
+  assertEquals(validation.invalidReferences.length, 2);
+  
+  // Should have issues
+  assert(Object.keys(validation.issues).length > 0);
+});
+
+Deno.test("generateFlagReport creates comprehensive usage report", async () => {
+  const { generateFlagReport } = await import("./code-analysis.ts");
+  
+  const scanResult = {
+    totalFiles: 10,
+    processedFiles: 10,
+    flagReferences: [
+      {
+        flag: "used_flag",
+        file: "test1.ts",
+        line: 1,
+        context: "isEnabled('used_flag')",
+        confidence: 0.9,
+        pattern: "isEnabled",
+        language: "typescript"
+      },
+      {
+        flag: "used_flag",
+        file: "test2.ts",
+        line: 5,
+        context: "getFlag('used_flag')",
+        confidence: 0.8,
+        pattern: "getFlag",
+        language: "typescript"
+      }
+    ],
+    errors: [],
+    warnings: [],
+    processingTime: 1000,
+    cacheUsed: false
+  };
+  
+  const knownFlags = ["used_flag", "unused_flag", "another_unused_flag"];
+  const executionId = "test-execution-123";
+  
+  const report = generateFlagReport(scanResult, knownFlags, executionId);
+  
+  // Summary should be accurate
+  assertEquals(report.summary.totalFlags, 3);
+  assertEquals(report.summary.usedFlags, 1);
+  assertEquals(report.summary.unusedFlags, 2);
+  assertEquals(report.summary.totalReferences, 2);
+  assertEquals(report.summary.filesScanned, 10);
+  
+  // Used flags should be detailed
+  assert("used_flag" in report.usedFlags);
+  assertEquals(report.usedFlags["used_flag"].references.length, 2);
+  assertEquals(report.usedFlags["used_flag"].files.length, 2);
+  assertEquals(report.usedFlags["used_flag"].confidence, 0.9);
+  
+  // Unused flags should be listed
+  assertEquals(report.unusedFlags.length, 2);
+  assert(report.unusedFlags.includes("unused_flag"));
+  assert(report.unusedFlags.includes("another_unused_flag"));
+  
+  // Report metadata should be present
+  assertEquals(report.executionId, executionId);
+  assert(report.generatedAt.length > 0);
 });
 
 Deno.test("findFlagUsagesInCodebase returns empty for unused flags", async () => {
