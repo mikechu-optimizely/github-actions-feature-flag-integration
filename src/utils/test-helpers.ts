@@ -244,12 +244,12 @@ export async function withTestEnvironment(
 ): Promise<void> {
   // Store original values for all potentially affected environment variables
   const originalValues: Record<string, string | undefined> = {};
-  
+
   const allEnvKeys = [
     "OPTIMIZELY_API_TOKEN",
     "OPTIMIZELY_PROJECT_ID",
     "ENVIRONMENT",
-    "OPERATION", 
+    "OPERATION",
     "DRY_RUN",
     "REPORTS_PATH",
     "LOG_LEVEL",
