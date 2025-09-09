@@ -1,0 +1,73 @@
+{
+  "imports": {
+    "@std/assert": "https://deno.land/std@0.217.0/assert/mod.ts",
+    "@std/testing": "https://deno.land/std@0.217.0/testing/mod.ts",
+    "@std/http": "https://deno.land/std@0.217.0/http/mod.ts",
+    "@std/log": "https://deno.land/std@0.217.0/log/mod.ts",
+    "@std/path": "https://deno.land/std@0.217.0/path/mod.ts",
+    "@std/fs": "https://deno.land/std@0.217.0/fs/mod.ts",
+    "@std/json": "https://deno.land/std@0.217.0/json/mod.ts",
+    "@std/crypto": "https://deno.land/std@0.217.0/crypto/mod.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false,
+    "proseWrap": "preserve",
+    "include": ["src/"]
+  },
+  "test": {
+    "include": ["src/**/*.test.ts", "src/**/*.serial.test.ts"],
+    "exclude": ["src/**/*.bench.ts"]
+  },
+  "tasks": {
+    "start": "deno run --allow-all src/main.ts",
+    // Serial tests: Run tests that require sequential execution due to global state manipulation
+    "test:serial": "deno test --allow-all src/**/*.serial.test.ts",
+    // Parallel tests: Run all other tests in parallel for speed, excluding serial tests
+    "test:parallel": "deno test --allow-all --parallel --ignore='**/*.serial.test.ts' src/",
+    // Main test task: Run serial tests first, then parallel tests
+    "test": {
+      "dependencies": ["test:serial"],
+      "command": "deno task test:parallel"
+    },
+    "test:watch": "deno test --allow-all --watch src/",
+    // Coverage tasks: Generate coverage reports for both serial and parallel tests
+    "test:coverage:serial": "deno test --allow-all --coverage=coverage src/**/*.serial.test.ts",
+    "test:coverage:parallel": "deno test --allow-all --coverage=coverage --parallel --ignore='**/*.serial.test.ts' src/",
+    "test:coverage:report": "deno coverage coverage --lcov --output=coverage.lcov",
+    "test:coverage": {
+      "dependencies": ["test:coverage:serial"],
+      "command": "deno task test:coverage:parallel && deno task test:coverage:report"
+    },
+    // CI tasks: Run tests with JUnit reporting for CI/CD pipelines
+    "test:ci:serial": "deno test --allow-all --coverage=coverage --reporter=junit --junit-path=./test-results.xml src/**/*.serial.test.ts",
+    "test:ci:parallel": "deno test --allow-all --coverage=coverage --reporter=junit --junit-path=./test-results-parallel.xml --parallel --ignore='**/*.serial.test.ts' src/",
+    "test:ci": {
+      "dependencies": ["test:ci:serial"],
+      "command": "deno task test:ci:parallel"
+    },
+    "lint": "deno lint src/",
+    "lint:fix": "deno lint --fix src/",
+    "fmt": "deno fmt src/",
+    "fmt:check": "deno fmt --check src/",
+    "check": "deno check src/**/*.ts",
+    "precommit": "deno task fmt && deno task lint && deno task check && deno task test",
+    "ci": "deno task fmt:check && deno task lint && deno task check && deno task test:ci"
+  },
+  "exclude": [
+    "node_modules",
+    "coverage"
+  ]
+}
