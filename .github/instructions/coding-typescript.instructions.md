@@ -14,7 +14,7 @@ applyTo: '**/*.{ts,tsx}'
 - Never use `console.log`. Use `console.debug`, `console.info`, `console.warn`, or `console.error` as appropriate
 - Add, update, and correct JSDoc for classes and functions/methods
 - Produce performant code, considering aspects like caching, lazy loading, and code splitting
-- Utilize asynchronous (async/await) instead of callbacks or synchronous code unless explicitly requested
+- Prefer `async`/`await` over Promises and callbacks
 - Use internal libraries (project-specific unless otherwise defined), then external libraries, then writing your own solutions when needed
 
 ## Type System and Safety
