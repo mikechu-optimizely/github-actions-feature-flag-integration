@@ -145,7 +145,7 @@ Deno.test({
     try {
       // Clean slate
       cleanupTestEnvironment();
-      
+
       // Wait a bit to ensure environment changes have been processed
       const token = Deno.env.get("OPTIMIZELY_API_TOKEN");
       assert(
@@ -155,10 +155,14 @@ Deno.test({
 
       // Setup
       setupTestEnvironment();
-      
+
       // Verify environment was set correctly
       const actualToken = Deno.env.get("OPTIMIZELY_API_TOKEN");
-      assertEquals(actualToken, "test-token-12345", `Expected token to be 'test-token-12345' but was: ${actualToken}`);
+      assertEquals(
+        actualToken,
+        "test-token-12345",
+        `Expected token to be 'test-token-12345' but was: ${actualToken}`,
+      );
       assertEquals(Deno.env.get("OPERATION"), "cleanup");
 
       // Setup with overrides
