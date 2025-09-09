@@ -642,10 +642,11 @@ export class FlagSyncCore {
    * @private
    */
   async #archiveFlag(flagKey: string): Promise<void> {
-    // TODO: Implement actual flag archiving through Optimizely API
-    // For now, simulate the operation
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    logger.info(`Flag ${flagKey} archived`);
+    const result = await this.optimizelyClient.archiveFeatureFlag(flagKey);
+    if (result.error || !result.data) {
+      throw (result.error ?? new Error(`Failed to archive flag ${flagKey}`));
+    }
+    logger.info("Flag archived", { flagKey });
   }
 
   /**
@@ -683,20 +684,67 @@ export class FlagSyncCore {
       logger.warn("Attempting rollback for operation", {
         operationId: operation.id,
         flagKey: operation.flagKey,
+        operationType: operation.type,
       });
 
-      // TODO: Implement actual rollback logic
-      // For now, simulate rollback
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      if (this.options.dryRun) {
+        return {
+          attempted: true,
+          successful: true,
+          message:
+            `DRY RUN: Would rollback ${operation.type} operation for flag ${operation.flagKey}`,
+        };
+      }
+
+      let rollbackSuccessful = false;
+      let rollbackMessage = "";
+
+      // Implement rollback logic based on operation type
+      switch (operation.type) {
+        case "archive": {
+          // Rollback archive by unarchiving the flag
+          const result = await this.optimizelyClient.unarchiveFeatureFlag(operation.flagKey);
+          if (result.error || !result.data) {
+            rollbackMessage = `Failed to unarchive flag: ${
+              result.error?.message ?? "Unknown error"
+            }`;
+          } else {
+            rollbackSuccessful = true;
+            rollbackMessage = `Successfully unarchived flag ${operation.flagKey}`;
+          }
+          break;
+        }
+        case "enable": {
+          // Rollback enable by disabling the flag
+          await this.#disableFlag(operation.flagKey);
+          rollbackSuccessful = true;
+          rollbackMessage = `Successfully disabled flag ${operation.flagKey}`;
+          break;
+        }
+        case "disable": {
+          // Rollback disable by enabling the flag
+          await this.#enableFlag(operation.flagKey);
+          rollbackSuccessful = true;
+          rollbackMessage = `Successfully enabled flag ${operation.flagKey}`;
+          break;
+        }
+        default: {
+          rollbackMessage = `No rollback procedure available for operation type: ${operation.type}`;
+        }
+      }
 
       return {
         attempted: true,
-        successful: true,
-        message:
-          `Successfully rolled back ${operation.type} operation for flag ${operation.flagKey}`,
+        successful: rollbackSuccessful,
+        message: rollbackMessage,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Rollback operation failed", {
+        operationId: operation.id,
+        flagKey: operation.flagKey,
+        error: errorMessage,
+      });
       return {
         attempted: true,
         successful: false,
@@ -792,5 +840,153 @@ export class FlagSyncCore {
     recommendations.push("Have rollback procedures ready in case of issues");
 
     return recommendations;
+  }
+
+  /**
+   * Archive all flags identified as unused in the usage report with safety checks and batching.
+   * Returns a summary of the operation.
+   */
+  async archiveUnusedFlags(
+    optimizelyFlags: OptimizelyFlag[],
+    usageReport: FlagUsageReport,
+  ): Promise<
+    Result<{
+      attempted: number;
+      archived: number;
+      skipped: number;
+      skippedReasons: Record<string, string>;
+    }, Error>
+  > {
+    try {
+      const unusedKeys = usageReport.unusedFlagKeys;
+
+      logger.info("Archiving unused flags - planning", {
+        totalOptimizelyFlags: optimizelyFlags.length,
+        unusedCount: unusedKeys.length,
+        dryRun: this.options.dryRun,
+      });
+
+      if (unusedKeys.length === 0) {
+        return {
+          data: { attempted: 0, archived: 0, skipped: 0, skippedReasons: {} },
+          error: null,
+        };
+      }
+
+      // Create quick lookup for current flag data
+      const byKey = new Map(optimizelyFlags.map((f) => [f.key, f]));
+
+      const candidates: string[] = [];
+      const skippedReasons: Record<string, string> = {};
+
+      // Safety validation per flag
+      for (const key of unusedKeys) {
+        const flag = byKey.get(key);
+        if (!flag) {
+          skippedReasons[key] = "flag_not_found_in_optimizely";
+          continue;
+        }
+        if (flag.archived) {
+          skippedReasons[key] = "already_archived";
+          continue;
+        }
+
+        // Check consistency across environments: ensure not enabled anywhere and no rollout rules
+        const consistency = await this.optimizelyClient.validateFlagConsistency(key);
+        if (consistency.error || !consistency.data) {
+          skippedReasons[key] = `consistency_check_failed: ${
+            consistency.error?.message ?? "unknown"
+          }`;
+          continue;
+        }
+
+        const envs = consistency.data.environments;
+        const anyEnabled = Object.values(envs).some((e) => e.enabled === true);
+        const anyRules = Object.values(envs).some((e) => e.hasTargetingRules === true);
+
+        if (anyEnabled) {
+          skippedReasons[key] = "enabled_in_some_environment";
+          continue;
+        }
+        if (anyRules) {
+          skippedReasons[key] = "targeting_rules_present";
+          continue;
+        }
+
+        candidates.push(key);
+      }
+
+      if (candidates.length === 0) {
+        logger.info("No safe candidates to archive after validation", {
+          skipped: Object.keys(skippedReasons).length,
+        });
+        return {
+          data: {
+            attempted: 0,
+            archived: 0,
+            skipped: Object.keys(skippedReasons).length,
+            skippedReasons,
+          },
+          error: null,
+        };
+      }
+
+      // Batch processing with configured concurrency; API client itself also rate-limits
+      const batchSize = Math.max(1, this.options.maxConcurrentOperations);
+      let archived = 0;
+      let attempted = 0;
+
+      for (let i = 0; i < candidates.length; i += batchSize) {
+        const batch = candidates.slice(i, i + batchSize);
+
+        if (this.options.dryRun) {
+          attempted += batch.length;
+          logger.info("DRY RUN: Would archive flags", { keys: batch });
+          continue;
+        }
+
+        // Prefer bulk endpoint when possible
+        const result = await this.optimizelyClient.archiveFeatureFlagsWithRecovery(batch);
+        attempted += batch.length;
+        if (result.error || !result.data) {
+          // On failure, try individual archival to maximize progress
+          logger.warn("Bulk archive failed; attempting individual archiving", {
+            error: result.error?.message,
+            batchSize: batch.length,
+          });
+
+          for (const key of batch) {
+            const single = await this.optimizelyClient.archiveFeatureFlag(key);
+            if (single.error || !single.data) {
+              skippedReasons[key] = `archive_failed: ${single.error?.message ?? "unknown"}`;
+            } else if (single.data) {
+              archived += 1;
+            }
+          }
+        } else {
+          archived += Object.keys(result.data).length;
+        }
+      }
+
+      logger.info("Archiving unused flags - completed", {
+        attempted,
+        archived,
+        skipped: Object.keys(skippedReasons).length,
+      });
+
+      return {
+        data: {
+          attempted,
+          archived,
+          skipped: Object.keys(skippedReasons).length,
+          skippedReasons,
+        },
+        error: null,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Failed to archive unused flags", { error: errorMessage });
+      return { data: null, error: new Error(`Archive unused flags failed: ${errorMessage}`) };
+    }
   }
 }

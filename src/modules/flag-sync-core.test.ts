@@ -212,3 +212,358 @@ Deno.test("FlagSyncCore - should use default options", () => {
   assertEquals(defaultSyncCore["options"].maxConcurrentOperations, 3);
   assertEquals(defaultSyncCore["options"].riskTolerance, "medium");
 });
+
+// Enhanced Mock Client for archiving tests
+class EnhancedMockOptimizelyApiClient extends MockOptimizelyApiClient {
+  private archivedFlags: Set<string> = new Set();
+  private shouldFailArchive = false;
+  private shouldFailConsistencyCheck = false;
+  private enabledFlags: Set<string> = new Set();
+  private flagsWithRules: Set<string> = new Set();
+
+  setShouldFailArchive(fail: boolean) {
+    this.shouldFailArchive = fail;
+  }
+
+  setShouldFailConsistencyCheck(fail: boolean) {
+    this.shouldFailConsistencyCheck = fail;
+  }
+
+  setFlagEnabled(flagKey: string, enabled: boolean) {
+    if (enabled) {
+      this.enabledFlags.add(flagKey);
+    } else {
+      this.enabledFlags.delete(flagKey);
+    }
+  }
+
+  setFlagHasRules(flagKey: string, hasRules: boolean) {
+    if (hasRules) {
+      this.flagsWithRules.add(flagKey);
+    } else {
+      this.flagsWithRules.delete(flagKey);
+    }
+  }
+
+  override archiveFeatureFlag(flagKey: string) {
+    if (this.shouldFailArchive) {
+      return Promise.resolve({ data: null, error: new Error(`Failed to archive ${flagKey}`) });
+    }
+    this.archivedFlags.add(flagKey);
+    return Promise.resolve({ data: true, error: null });
+  }
+
+  override archiveFeatureFlagsWithRecovery(flagKeys: string[] | string) {
+    const keys = Array.isArray(flagKeys) ? flagKeys : [flagKeys];
+    if (this.shouldFailArchive) {
+      return Promise.resolve({ data: null, error: new Error("Bulk archive failed") });
+    }
+
+    const result: Record<string, OptimizelyFlag> = {};
+    for (const key of keys) {
+      this.archivedFlags.add(key);
+      result[key] = createMockFlag(key, true);
+    }
+    return Promise.resolve({ data: result, error: null });
+  }
+
+  override validateFlagConsistency(flagKey: string) {
+    if (this.shouldFailConsistencyCheck) {
+      return Promise.resolve({ data: null, error: new Error("Consistency check failed") });
+    }
+
+    const enabled = this.enabledFlags.has(flagKey);
+    const hasRules = this.flagsWithRules.has(flagKey);
+
+    return Promise.resolve({
+      data: {
+        flagKey,
+        isConsistent: true,
+        environments: {
+          production: {
+            key: "production",
+            name: "Production",
+            enabled,
+            status: "running",
+            hasTargetingRules: hasRules,
+            priority: 1,
+          },
+        },
+        inconsistencies: [],
+        summary: {
+          totalEnvironments: 1,
+          enabledEnvironments: enabled ? 1 : 0,
+          disabledEnvironments: enabled ? 0 : 1,
+          archivedEnvironments: 0,
+        },
+      },
+      error: null,
+    });
+  }
+
+  override unarchiveFeatureFlag(flagKey: string) {
+    this.archivedFlags.delete(flagKey);
+    return Promise.resolve({ data: true, error: null });
+  }
+
+  isArchived(flagKey: string): boolean {
+    return this.archivedFlags.has(flagKey);
+  }
+}
+
+// Helper to create enhanced test instance
+function createEnhancedTestFlagSyncCore(dryRun = true): {
+  flagSyncCore: FlagSyncCore;
+  mockClient: EnhancedMockOptimizelyApiClient;
+} {
+  const mockClient = new EnhancedMockOptimizelyApiClient();
+  const flagSyncCore = new FlagSyncCore(mockClient, {
+    dryRun,
+    maxConcurrentOperations: 2,
+    riskTolerance: "medium",
+  });
+  return { flagSyncCore, mockClient };
+}
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - dry run mode", async () => {
+  const { flagSyncCore } = createEnhancedTestFlagSyncCore(true);
+
+  const optimizelyFlags = [
+    createMockFlag("unused_flag_1"),
+    createMockFlag("unused_flag_2"),
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["unused_flag_1", "unused_flag_2"],
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 2);
+  assertEquals(result.data.archived, 0); // In dry run, nothing actually archived
+  assertEquals(result.data.skipped, 0);
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - real mode with valid flags", async () => {
+  const { flagSyncCore, mockClient } = createEnhancedTestFlagSyncCore(false);
+
+  const optimizelyFlags = [
+    createMockFlag("unused_flag_1"),
+    createMockFlag("unused_flag_2"),
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["unused_flag_1", "unused_flag_2"],
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 2);
+  assertEquals(result.data.archived, 2);
+  assertEquals(result.data.skipped, 0);
+
+  // Verify flags were actually archived in mock
+  assertEquals(mockClient.isArchived("unused_flag_1"), true);
+  assertEquals(mockClient.isArchived("unused_flag_2"), true);
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - skips already archived flags", async () => {
+  const { flagSyncCore } = createEnhancedTestFlagSyncCore(false);
+
+  const optimizelyFlags = [
+    createMockFlag("unused_flag_1"),
+    createMockFlag("already_archived", true), // Already archived
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["unused_flag_1", "already_archived"],
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 1);
+  assertEquals(result.data.archived, 1); // Only one actually archived
+  assertEquals(result.data.skipped, 1); // One skipped (already archived)
+  assertEquals(result.data.skippedReasons["already_archived"], "already_archived");
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - skips flags not found in Optimizely", async () => {
+  const { flagSyncCore } = createEnhancedTestFlagSyncCore(false);
+
+  const optimizelyFlags = [
+    createMockFlag("unused_flag_1"),
+    // missing_flag is not in the optimizelyFlags array
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["unused_flag_1", "missing_flag"], // missing_flag doesn't exist in Optimizely
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 1);
+  assertEquals(result.data.archived, 1);
+  assertEquals(result.data.skipped, 1);
+  assertEquals(result.data.skippedReasons["missing_flag"], "flag_not_found_in_optimizely");
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - handles empty unused flags list", async () => {
+  const { flagSyncCore } = createEnhancedTestFlagSyncCore(false);
+
+  const optimizelyFlags = [
+    createMockFlag("used_flag"),
+  ];
+
+  const usageReport = createMockUsageReport([], new Map()); // No unused flags
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 0);
+  assertEquals(result.data.archived, 0);
+  assertEquals(result.data.skipped, 0);
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - handles consistency check failures", async () => {
+  const { flagSyncCore, mockClient } = createEnhancedTestFlagSyncCore(false);
+
+  // Set the mock to fail consistency checks
+  mockClient.setShouldFailConsistencyCheck(true);
+
+  const optimizelyFlags = [
+    createMockFlag("problematic_flag"),
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["problematic_flag"],
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 0);
+  assertEquals(result.data.archived, 0);
+  assertEquals(result.data.skipped, 1);
+  assertEquals(
+    result.data.skippedReasons["problematic_flag"].includes("consistency_check_failed"),
+    true,
+  );
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - skips flags enabled in environments", async () => {
+  const { flagSyncCore, mockClient } = createEnhancedTestFlagSyncCore(false);
+
+  // Set the flag as enabled in the mock
+  mockClient.setFlagEnabled("enabled_flag", true);
+
+  const optimizelyFlags = [
+    createMockFlag("enabled_flag"),
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["enabled_flag"],
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 0);
+  assertEquals(result.data.archived, 0);
+  assertEquals(result.data.skipped, 1);
+  assertEquals(result.data.skippedReasons["enabled_flag"], "enabled_in_some_environment");
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - skips flags with targeting rules", async () => {
+  const { flagSyncCore, mockClient } = createEnhancedTestFlagSyncCore(false);
+
+  // Set the flag as having targeting rules in the mock
+  mockClient.setFlagHasRules("flag_with_rules", true);
+
+  const optimizelyFlags = [
+    createMockFlag("flag_with_rules"),
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["flag_with_rules"],
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 0);
+  assertEquals(result.data.archived, 0);
+  assertEquals(result.data.skipped, 1);
+  assertEquals(result.data.skippedReasons["flag_with_rules"], "targeting_rules_present");
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - handles batch size limits", async () => {
+  const { flagSyncCore } = createEnhancedTestFlagSyncCore(false);
+
+  const optimizelyFlags = [
+    createMockFlag("unused_flag_1"),
+    createMockFlag("unused_flag_2"),
+    createMockFlag("unused_flag_3"),
+    createMockFlag("unused_flag_4"),
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["unused_flag_1", "unused_flag_2", "unused_flag_3", "unused_flag_4"],
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 4);
+  assertEquals(result.data.archived, 4); // All should be archived despite batching
+  assertEquals(result.data.skipped, 0);
+});
+
+Deno.test("FlagSyncCore.archiveUnusedFlags - handles API errors gracefully with fallback", async () => {
+  const { flagSyncCore, mockClient } = createEnhancedTestFlagSyncCore(false);
+
+  // Set bulk archive to fail, but individual archive should succeed
+  mockClient.setShouldFailArchive(false); // Individual calls will succeed
+
+  // Override the bulk method to fail
+  mockClient.archiveFeatureFlagsWithRecovery = (_flagKeys: string[] | string) => {
+    return Promise.resolve({ data: null, error: new Error("Bulk archive failed") });
+  };
+
+  const optimizelyFlags = [
+    createMockFlag("fallback_flag"),
+  ];
+
+  const usageReport = createMockUsageReport(
+    ["fallback_flag"],
+    new Map(),
+  );
+
+  const result = await flagSyncCore.archiveUnusedFlags(optimizelyFlags, usageReport);
+
+  assertExists(result.data);
+  assertEquals(result.error, null);
+  assertEquals(result.data.attempted, 1);
+  assertEquals(result.data.archived, 1); // Should succeed with fallback
+  assertEquals(result.data.skipped, 0);
+});

@@ -459,6 +459,92 @@ export class OptimizelyApiClient {
   }
 
   /**
+   * Unarchives one or more feature flags by their keys.
+   * @param flagKeys Array of flag keys to unarchive, or single flag key
+   * @returns Result object with unarchived flags data or error
+   */
+  async unarchiveFeatureFlags(
+    flagKeys: string[] | string,
+  ): Promise<Result<Record<string, OptimizelyFlag>, Error>> {
+    try {
+      const keysArray = Array.isArray(flagKeys) ? flagKeys : [flagKeys];
+
+      if (keysArray.length === 0) {
+        return {
+          data: null,
+          error: new Error("At least one flag key is required"),
+        };
+      }
+
+      // Validate all flag keys
+      for (const key of keysArray) {
+        if (!key || typeof key !== "string") {
+          return {
+            data: null,
+            error: new Error("All flag keys must be non-empty strings"),
+          };
+        }
+      }
+
+      const env = await loadEnvironment();
+      const projectId = env.OPTIMIZELY_PROJECT_ID;
+
+      if (!projectId) {
+        return {
+          data: null,
+          error: new Error("OPTIMIZELY_PROJECT_ID environment variable is required"),
+        };
+      }
+
+      const path = `/flags/v1/projects/${encodeURIComponent(projectId)}/flags/unarchived`;
+      const result = await this.request<Record<string, OptimizelyFlag>>(path, {
+        method: "POST",
+        body: JSON.stringify({ keys: keysArray }),
+      });
+
+      if (result.error) {
+        logger.error("Failed to unarchive feature flags", {
+          flagKeys: keysArray,
+          projectId,
+          error: result.error.message,
+        });
+        return { data: null, error: result.error };
+      }
+
+      logger.info("Successfully unarchived feature flags", {
+        flagKeys: keysArray,
+        projectId,
+        unarchivedCount: Object.keys(result.data || {}).length,
+      });
+
+      return { data: result.data, error: null };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Error in unarchiveFeatureFlags", { flagKeys, error: errorMsg });
+      return {
+        data: null,
+        error: new Error(`Failed to unarchive flags: ${errorMsg}`),
+      };
+    }
+  }
+
+  /**
+   * Unarchives a single feature flag by its key.
+   * @param flagKey The key of the flag to unarchive
+   * @returns Result object with success status or error
+   */
+  async unarchiveFeatureFlag(flagKey: string): Promise<Result<boolean, Error>> {
+    const result = await this.unarchiveFeatureFlags([flagKey]);
+
+    if (result.error) {
+      return { data: null, error: result.error };
+    }
+
+    const unarchived = result.data && Object.keys(result.data).length > 0;
+    return { data: unarchived, error: null };
+  }
+
+  /**
    * Fetches detailed information for a specific feature flag.
    * @param flagKey The key of the flag to fetch
    * @returns Result object with detailed flag data or error
