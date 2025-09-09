@@ -102,31 +102,34 @@ Deno.test({
     });
 
     await t.step("initializeComponents functionality", async (t) => {
-      await t.step("should initialize components successfully with valid configuration", async () => {
-        await withTestEnvironment({
-          OPTIMIZELY_API_TOKEN: "test-token-123",
-          OPTIMIZELY_PROJECT_ID: "123456",
-        }, async () => {
-          // Test that main.ts starts without immediately failing due to component initialization
-          const process = new Deno.Command("deno", {
-            args: ["run", "--allow-all", "src/main.ts", "--operation", "audit", "--dry-run"],
-            stdout: "piped",
-            stderr: "piped",
+      await t.step(
+        "should initialize components successfully with valid configuration",
+        async () => {
+          await withTestEnvironment({
+            OPTIMIZELY_API_TOKEN: "test-token-123",
+            OPTIMIZELY_PROJECT_ID: "123456",
+          }, async () => {
+            // Test that main.ts starts without immediately failing due to component initialization
+            const process = new Deno.Command("deno", {
+              args: ["run", "--allow-all", "src/main.ts", "--operation", "audit", "--dry-run"],
+              stdout: "piped",
+              stderr: "piped",
+            });
+
+            const { stdout, stderr } = await process.output();
+            const output = new TextDecoder().decode(stdout);
+            const errorOutput = new TextDecoder().decode(stderr);
+
+            // Should start the synchronization process, indicating successful component initialization
+            const hasStartMessage = output.includes("Starting feature flag synchronization");
+            const hasComponentError = errorOutput.includes("component") ||
+              errorOutput.includes("initialize");
+
+            // Either starts successfully or fails later (not during component init)
+            assertEquals(hasStartMessage || !hasComponentError, true);
           });
-
-          const { stdout, stderr } = await process.output();
-          const output = new TextDecoder().decode(stdout);
-          const errorOutput = new TextDecoder().decode(stderr);
-
-          // Should start the synchronization process, indicating successful component initialization
-          const hasStartMessage = output.includes("Starting feature flag synchronization");
-          const hasComponentError = errorOutput.includes("component") ||
-            errorOutput.includes("initialize");
-
-          // Either starts successfully or fails later (not during component init)
-          assertEquals(hasStartMessage || !hasComponentError, true);
-        });
-      });
+        },
+      );
     });
 
     await t.step("error handling", async (t) => {

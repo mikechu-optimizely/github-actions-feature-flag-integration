@@ -48,30 +48,33 @@ Deno.test({
       });
     });
 
-    await t.step("loadEnvironmentVariables returns DRY_RUN as false when set to 'false'", async () => {
-      const reportsPath = "test-reports-env-dry-run-false";
+    await t.step(
+      "loadEnvironmentVariables returns DRY_RUN as false when set to 'false'",
+      async () => {
+        const reportsPath = "test-reports-env-dry-run-false";
 
-      await withTestEnvironment({
-        OPTIMIZELY_API_TOKEN: "test-token-12345",
-        OPTIMIZELY_PROJECT_ID: "123456",
-        GITHUB_TOKEN: "gh",
-        ENVIRONMENT: "dev",
-        OPERATION: "cleanup",
-        DRY_RUN: "false",
-        REPORTS_PATH: reportsPath,
-      }, async () => {
-        try {
-          const result = await loadEnvironment();
-          assertEquals(result.DRY_RUN, false);
-        } finally {
+        await withTestEnvironment({
+          OPTIMIZELY_API_TOKEN: "test-token-12345",
+          OPTIMIZELY_PROJECT_ID: "123456",
+          GITHUB_TOKEN: "gh",
+          ENVIRONMENT: "dev",
+          OPERATION: "cleanup",
+          DRY_RUN: "false",
+          REPORTS_PATH: reportsPath,
+        }, async () => {
           try {
-            await Deno.remove(reportsPath, { recursive: true });
-          } catch {
-            // Ignore cleanup errors
+            const result = await loadEnvironment();
+            assertEquals(result.DRY_RUN, false);
+          } finally {
+            try {
+              await Deno.remove(reportsPath, { recursive: true });
+            } catch {
+              // Ignore cleanup errors
+            }
           }
-        }
-      });
-    });
+        });
+      },
+    );
 
     await t.step("loadEnvironmentVariables ignores extra environment variables", async () => {
       const reportsPath = "test-reports-env-extra-vars";
