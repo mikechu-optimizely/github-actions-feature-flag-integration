@@ -10,7 +10,7 @@ import { EnvironmentConfig, OperationType } from "../types/config.ts";
  */
 const DEFAULT_VALUES = {
   ENVIRONMENT: "auto",
-  OPERATION: "sync" as OperationType,
+  OPERATION: "cleanup" as OperationType,
   DRY_RUN: "true",
   REPORTS_PATH: "reports",
   LOG_LEVEL: "info",
