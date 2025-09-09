@@ -147,12 +147,12 @@ TODO: Tasks that have been completed
   - [x] Read patterns from committed config file in .github/ directory for version management
 
 ## Phase 5: Flag Cleanup Core & Main Orchestration
-- TODO: Build flag cleanup core module for lifecycle operations
-  - [ ] Create flag-sync-core.ts module
-  - [ ] Implement createSyncPlan() for analyzing differences
-  - [ ] Add validateFlagConsistency() for Optimizely-code alignment
-  - [ ] Create executeSyncPlan() for planned operations
-  - [ ] Implement comprehensive error handling and rollback
+- DONE: Build flag cleanup core module for lifecycle operations
+  - [x] Create flag-sync-core.ts module
+  - [x] Implement createSyncPlan() for analyzing differences
+  - [x] Add validateFlagConsistency() for Optimizely-code alignment
+  - [x] Create executeSyncPlan() for planned operations
+  - [x] Implement comprehensive error handling and rollback
 - TODO: Implement cleanup plan creation and execution
   - [ ] Analyze flag differences between Optimizely and codebase
   - [ ] Create detailed execution plans with risk assessment
