@@ -115,24 +115,74 @@ Deno.test("createMockFetch validates URL patterns", async () => {
   }
 });
 
-Deno.test("setupTestEnvironment and cleanupTestEnvironment work correctly", () => {
-  // Clean slate
-  cleanupTestEnvironment();
-  assert(!Deno.env.get("OPTIMIZELY_API_TOKEN"));
+Deno.test({
+  name: "setupTestEnvironment and cleanupTestEnvironment work correctly",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () => {
+    // Store original values to restore after test
+    const originalEnv: Record<string, string | undefined> = {};
+    const envVarsToCheck = [
+      "OPTIMIZELY_API_TOKEN",
+      "OPTIMIZELY_PROJECT_ID",
+      "ENVIRONMENT",
+      "OPERATION",
+      "DRY_RUN",
+      "REPORTS_PATH",
+      "LOG_LEVEL",
+      "API_RATE_LIMIT",
+      "API_TIMEOUT",
+      "MAX_RETRIES",
+      "CONCURRENCY_LIMIT",
+      "GITHUB_TOKEN",
+      "GITHUB_RUN_ID",
+    ];
 
-  // Setup
-  setupTestEnvironment();
-  assertEquals(Deno.env.get("OPTIMIZELY_API_TOKEN"), "test-token-12345");
-  assertEquals(Deno.env.get("OPERATION"), "cleanup");
+    for (const envVar of envVarsToCheck) {
+      originalEnv[envVar] = Deno.env.get(envVar);
+    }
 
-  // Setup with overrides
-  setupTestEnvironment({ OPERATION: "audit" });
-  assertEquals(Deno.env.get("OPERATION"), "audit");
+    try {
+      // Clean slate
+      cleanupTestEnvironment();
+      
+      // Wait a bit to ensure environment changes have been processed
+      const token = Deno.env.get("OPTIMIZELY_API_TOKEN");
+      assert(
+        !token,
+        `OPTIMIZELY_API_TOKEN should be undefined after cleanup but was: ${token}`,
+      );
 
-  // Cleanup
-  cleanupTestEnvironment();
-  assert(!Deno.env.get("OPTIMIZELY_API_TOKEN"));
-  assert(!Deno.env.get("OPERATION"));
+      // Setup
+      setupTestEnvironment();
+      
+      // Verify environment was set correctly
+      const actualToken = Deno.env.get("OPTIMIZELY_API_TOKEN");
+      assertEquals(actualToken, "test-token-12345", `Expected token to be 'test-token-12345' but was: ${actualToken}`);
+      assertEquals(Deno.env.get("OPERATION"), "cleanup");
+
+      // Setup with overrides
+      setupTestEnvironment({ OPERATION: "audit" });
+      assertEquals(Deno.env.get("OPERATION"), "audit");
+
+      // Cleanup
+      cleanupTestEnvironment();
+      assert(
+        !Deno.env.get("OPTIMIZELY_API_TOKEN"),
+        "OPTIMIZELY_API_TOKEN should be undefined after final cleanup",
+      );
+      assert(!Deno.env.get("OPERATION"), "OPERATION should be undefined after final cleanup");
+    } finally {
+      // Restore original environment
+      for (const [envVar, originalValue] of Object.entries(originalEnv)) {
+        if (originalValue === undefined) {
+          Deno.env.delete(envVar);
+        } else {
+          Deno.env.set(envVar, originalValue);
+        }
+      }
+    }
+  },
 });
 
 Deno.test("createTempDir and cleanupTempDir work correctly", async () => {

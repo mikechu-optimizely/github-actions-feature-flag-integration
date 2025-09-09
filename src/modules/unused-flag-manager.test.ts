@@ -650,12 +650,17 @@ Deno.test("UnusedFlagManager handles recently modified flags appropriately", asy
   assert(recentFlag.reason.includes("recently modified"));
 });
 
-// Cleanup function to remove test files
+// Cleanup function to remove test files and environment variables
 async function cleanup() {
   try {
     await Deno.remove("reports/test-audit.log");
   } catch {
     // Ignore if file doesn't exist
+  }
+
+  // Clean up environment variables
+  for (const key of Object.keys(envVars)) {
+    Deno.env.delete(key);
   }
 }
 
