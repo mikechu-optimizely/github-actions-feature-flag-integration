@@ -6,6 +6,11 @@
 import { OptimizelyApiClient } from "./optimizely-client.ts";
 import { FlagUsage } from "./code-analysis.ts";
 import { FlagUsageReport } from "./flag-usage-reporter.ts";
+import {
+  ConsistencyValidator,
+  PostOperationValidationContext,
+  PreOperationValidationContext,
+} from "./consistency-validator.ts";
 import { OptimizelyFlag } from "../types/optimizely.ts";
 import {
   ConsistencyIssue,
@@ -56,6 +61,7 @@ const DEFAULT_OPTIONS: FlagSyncCoreOptions = {
  */
 export class FlagSyncCore {
   private readonly optimizelyClient: OptimizelyApiClient;
+  private readonly consistencyValidator: ConsistencyValidator;
   private readonly options: FlagSyncCoreOptions;
 
   /**
@@ -68,6 +74,10 @@ export class FlagSyncCore {
     options: Partial<FlagSyncCoreOptions> = {},
   ) {
     this.optimizelyClient = optimizelyClient;
+    this.consistencyValidator = new ConsistencyValidator(optimizelyClient, {
+      enableAutoRollback: options.enableRollback ?? true,
+      deepValidation: true,
+    });
     this.options = { ...DEFAULT_OPTIONS, ...options };
 
     logger.info("FlagSyncCore initialized", {
@@ -113,6 +123,9 @@ export class FlagSyncCore {
           isUsedInCode,
           isUnused,
         );
+
+        // Set usage report in operation context for consistency validation
+        operation.context.usageReport = usageReport;
 
         if (operation.type !== "no_action") {
           operations.push(operation);
@@ -396,6 +409,7 @@ export class FlagSyncCore {
       context: {
         currentFlag: flag,
         codeUsages: flagUsages,
+        usageReport: undefined, // Will be set when creating sync plan
       },
       validationChecks,
       rollbackInfo: {
@@ -555,19 +569,56 @@ export class FlagSyncCore {
   }
 
   /**
-   * Executes a single sync operation.
+   * Executes a single sync operation with comprehensive consistency validation.
    * @private
    */
   async #executeOperation(operation: SyncOperation): Promise<SyncOperationResult> {
     const startTime = new Date().toISOString();
 
     try {
-      logger.info("Executing sync operation", {
+      logger.info("Executing sync operation with consistency validation", {
         operationId: operation.id,
         type: operation.type,
         flagKey: operation.flagKey,
         dryRun: this.options.dryRun,
       });
+
+      // Get current flag state for validation
+      const currentFlagResult = await this.optimizelyClient.getFlagDetails(operation.flagKey);
+      const currentFlag = currentFlagResult.data;
+
+      // Pre-operation consistency validation
+      const preValidationContext: PreOperationValidationContext = {
+        operation,
+        currentFlag: currentFlag || undefined,
+        usageReport: operation.context.usageReport as FlagUsageReport,
+      };
+
+      const preValidation = await this.consistencyValidator.validatePreOperation(
+        preValidationContext,
+      );
+      if (preValidation.error) {
+        logger.warn("Pre-operation validation failed", {
+          operationId: operation.id,
+          error: preValidation.error.message,
+        });
+        // Continue with operation but log the warning
+      } else if (preValidation.data && !preValidation.data.passed) {
+        logger.warn("Pre-operation validation detected issues", {
+          operationId: operation.id,
+          criticalIssues: preValidation.data.summary.criticalIssues,
+          warnings: preValidation.data.summary.warnings,
+        });
+
+        // If there are critical issues and rollback is recommended, abort operation
+        if (
+          preValidation.data.summary.criticalIssues > 0 && preValidation.data.rollbackRecommended
+        ) {
+          throw new Error(
+            `Critical consistency issues detected: ${preValidation.data.summary.criticalIssues} issues found`,
+          );
+        }
+      }
 
       // Run validation checks first
       for (const check of operation.validationChecks) {
@@ -604,7 +655,8 @@ export class FlagSyncCore {
       const endTime = new Date().toISOString();
       const durationMs = Date.parse(endTime) - Date.parse(startTime);
 
-      return {
+      // Create initial operation result
+      const operationResult: SyncOperationResult = {
         operationId: operation.id,
         status: "success",
         message,
@@ -612,6 +664,65 @@ export class FlagSyncCore {
         endTime,
         durationMs,
       };
+
+      // Post-operation consistency validation
+      if (!this.options.dryRun) {
+        const postFlagResult = await this.optimizelyClient.getFlagDetails(operation.flagKey);
+        const postOperationFlag = postFlagResult.data;
+
+        const postValidationContext: PostOperationValidationContext = {
+          operation,
+          operationResult,
+          preOperationState: currentFlag || undefined,
+          postOperationState: postOperationFlag || undefined,
+          usageReport: operation.context.usageReport as FlagUsageReport,
+        };
+
+        const postValidation = await this.consistencyValidator.validatePostOperation(
+          postValidationContext,
+        );
+        if (postValidation.error) {
+          logger.warn("Post-operation validation failed", {
+            operationId: operation.id,
+            error: postValidation.error.message,
+          });
+        } else if (postValidation.data && !postValidation.data.passed) {
+          logger.warn("Post-operation validation detected issues", {
+            operationId: operation.id,
+            criticalIssues: postValidation.data.summary.criticalIssues,
+            rollbackRecommended: postValidation.data.rollbackRecommended,
+          });
+
+          // If rollback is recommended and enabled, attempt rollback
+          if (postValidation.data.rollbackRecommended && this.options.enableRollback) {
+            logger.info("Attempting automatic rollback due to consistency issues", {
+              operationId: operation.id,
+              flagKey: operation.flagKey,
+            });
+
+            const rollbackResult = await this.#rollbackOperation(operation);
+            operationResult.rollback = rollbackResult;
+
+            if (rollbackResult.successful) {
+              operationResult.status = "rolled_back";
+              operationResult.message =
+                `Operation rolled back due to consistency issues: ${message}`;
+              logger.info("Automatic rollback successful", {
+                operationId: operation.id,
+                flagKey: operation.flagKey,
+              });
+            } else {
+              logger.error("Automatic rollback failed", {
+                operationId: operation.id,
+                flagKey: operation.flagKey,
+                rollbackMessage: rollbackResult.message,
+              });
+            }
+          }
+        }
+      }
+
+      return operationResult;
     } catch (error) {
       const endTime = new Date().toISOString();
       const durationMs = Date.parse(endTime) - Date.parse(startTime);
@@ -840,6 +951,75 @@ export class FlagSyncCore {
     recommendations.push("Have rollback procedures ready in case of issues");
 
     return recommendations;
+  }
+
+  /**
+   * Validates flag consistency before and after cleanup operations.
+   * @param optimizelyFlags Array of flags from Optimizely
+   * @param usageReport Flag usage report from codebase analysis
+   * @returns Result containing consistency validation results
+   */
+  async validateConsistency(
+    optimizelyFlags: OptimizelyFlag[],
+    usageReport: FlagUsageReport,
+  ): Promise<
+    Result<{
+      timestamp: string;
+      summary: {
+        totalFlags: number;
+        consistentFlags: number;
+        inconsistentFlags: number;
+        criticalIssues: number;
+        warnings: number;
+      };
+      recommendations: string[];
+    }, Error>
+  > {
+    try {
+      logger.info("Validating flag consistency across Optimizely and codebase", {
+        optimizelyFlags: optimizelyFlags.length,
+        codebaseFlags: usageReport.totalFlags,
+      });
+
+      const allFlagKeys = new Set([
+        ...optimizelyFlags.map((flag) => flag.key),
+        ...Array.from(usageReport.flagUsages.keys()),
+      ]);
+
+      const consistencyResult = await this.consistencyValidator.generateConsistencyReport(
+        Array.from(allFlagKeys),
+        optimizelyFlags,
+        usageReport,
+      );
+
+      if (consistencyResult.error) {
+        throw consistencyResult.error;
+      }
+
+      const report = consistencyResult.data!;
+      logger.info("Flag consistency validation completed", {
+        totalFlags: report.summary.totalFlags,
+        consistentFlags: report.summary.consistentFlags,
+        inconsistentFlags: report.summary.inconsistentFlags,
+        criticalIssues: report.summary.criticalIssues,
+      });
+
+      return {
+        data: {
+          timestamp: report.timestamp,
+          summary: report.summary,
+          recommendations: report.recommendations,
+        },
+        error: null,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Failed to validate flag consistency", { error: errorMessage });
+      return {
+        data: null,
+        error: new Error(`Flag consistency validation failed: ${errorMessage}`),
+      };
+    }
   }
 
   /**

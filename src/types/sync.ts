@@ -44,6 +44,8 @@ export interface SyncOperation {
     codeUsages: FlagUsage[];
     /** Dependencies or related operations */
     dependencies?: string[];
+    /** Usage report for validation */
+    usageReport?: import("../modules/flag-usage-reporter.ts").FlagUsageReport;
   };
   /** Validation checks that must pass before execution */
   validationChecks: ValidationCheck[];
