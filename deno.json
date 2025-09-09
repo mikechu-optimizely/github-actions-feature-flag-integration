@@ -42,7 +42,7 @@
     "fmt": "deno fmt src/",
     "fmt:check": "deno fmt --check src/",
     "check": "deno check src/**/*.ts",
-    "precommit": "deno task fmt && deno task lint && deno task check && deno task test",
+    "precommit": "deno task fmt && deno task lint && deno task check && deno test --allow-all src/",
     "ci": "deno task fmt:check && deno task lint && deno task check && deno task test:ci"
   },
   "exclude": [
