@@ -355,8 +355,8 @@ EXAMPLES:
   # Audit flags in dry run mode
   deno run --allow-all src/main.ts --operation audit
 
-  # Sync flags for production environment
-  deno run --allow-all src/main.ts --environment production --operation sync --no-dry-run
+  # Cleanup flags for production environment
+  deno run --allow-all src/main.ts --environment production --operation cleanup --no-dry-run
 
   # Cleanup unused flags
   deno run --allow-all src/main.ts --operation cleanup --no-dry-run
