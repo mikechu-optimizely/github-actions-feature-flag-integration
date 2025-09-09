@@ -248,3 +248,146 @@ export interface SyncExecutionResult {
   /** Any warnings or notable issues */
   warnings: string[];
 }
+
+/**
+ * Flag difference types for analysis
+ */
+export type FlagDifferenceType =
+  | "orphaned_in_optimizely"
+  | "missing_in_optimizely"
+  | "archived_but_used"
+  | "active_but_unused"
+  | "configuration_drift";
+
+/**
+ * Flag difference identified during analysis
+ */
+export interface FlagDifference {
+  /** Flag key */
+  flagKey: string;
+  /** Type of difference */
+  type: FlagDifferenceType;
+  /** Severity level */
+  severity: "low" | "medium" | "high";
+  /** Description of the difference */
+  description: string;
+  /** Recommended action to resolve */
+  recommendedAction: string;
+  /** Risk level of resolving this difference */
+  riskLevel: RiskLevel;
+  /** Additional context */
+  context: {
+    /** Usage locations in code */
+    usageLocations: FlagUsage[];
+    /** Last modification timestamp */
+    lastModified?: string;
+    /** Optimizely flag details */
+    optimizelyFlag?: OptimizelyFlag;
+  };
+}
+
+/**
+ * Flag analysis result
+ */
+export interface FlagAnalysisResult {
+  /** Analysis timestamp */
+  timestamp: string;
+  /** Total flags in Optimizely */
+  totalOptimizelyFlags: number;
+  /** Total flags found in codebase */
+  totalCodebaseFlags: number;
+  /** Flag differences found */
+  differences: FlagDifference[];
+  /** Summary statistics */
+  summary: {
+    /** Flags in Optimizely not used in code */
+    orphanedFlags: number;
+    /** Flags used in code but missing in Optimizely */
+    missingFlags: number;
+    /** Flags archived in Optimizely but used in code */
+    archivedButUsed: number;
+    /** Flags active in Optimizely but unused in code */
+    activeButUnused: number;
+    /** Flags that are consistent */
+    consistentFlags: number;
+  };
+}
+
+/**
+ * Options for cleanup plan creation
+ */
+export interface CleanupPlanOptions {
+  /** Whether to run in dry-run mode */
+  dryRun: boolean;
+  /** Maximum operations per batch */
+  batchSize: number;
+  /** Maximum concurrent operations */
+  maxConcurrentOperations: number;
+  /** Whether to require manual confirmation */
+  requireConfirmation: boolean;
+  /** Whether to enable automatic rollback */
+  enableRollback: boolean;
+}
+
+/**
+ * Plan execution phase
+ */
+export interface ExecutionPhase {
+  /** Phase name */
+  name: string;
+  /** Phase description */
+  description: string;
+  /** Operations in this phase */
+  operations: { flagKey: string; reason: string }[];
+}
+
+/**
+ * Plan execution ordering information
+ */
+export interface PlanExecutionOrder {
+  /** Execution strategy */
+  strategy: "risk_based" | "dependency_based" | "manual";
+  /** Execution phases */
+  phases: ExecutionPhase[];
+  /** Operation dependencies */
+  dependencies: Map<string, string[]>;
+}
+
+/**
+ * Comprehensive cleanup plan
+ */
+export interface CleanupPlan {
+  /** Plan ID */
+  id: string;
+  /** Plan timestamp */
+  timestamp: string;
+  /** Plan status */
+  status: "draft" | "approved" | "executing" | "completed" | "failed" | "cancelled";
+  /** Flag analysis results */
+  analysis: FlagAnalysisResult;
+  /** Operations to execute */
+  operations: SyncOperation[];
+  /** Execution ordering */
+  executionOrder: PlanExecutionOrder;
+  /** Plan options */
+  options: CleanupPlanOptions;
+  /** Validation results */
+  validation: {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+    info: string[];
+    riskAssessment: RiskAssessment;
+  };
+  /** Additional metadata */
+  metadata: {
+    /** Plan creator */
+    createdBy: string;
+    /** Estimated execution duration in ms */
+    estimatedDuration: number;
+    /** Risk assessment */
+    riskAssessment: RiskAssessment;
+    /** External dependencies */
+    dependencies: string[];
+  };
+}
