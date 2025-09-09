@@ -159,12 +159,12 @@ TODO: Tasks that have been completed
   - [x] Implement plan validation and safety checks
   - [x] Add plan preview and confirmation workflows
   - [x] Create execution ordering and dependency management
-- TODO: Enable flag archiving operations (soft delete)
-  - [ ] Implement archiveUnusedFlags() function
-  - [ ] Add archiveFeatureFlag() in API client
-  - [ ] Create safe archiving with validation checks
-  - [ ] Implement bulk archiving with rate limiting
-  - [ ] Add archive confirmation and rollback capabilities
+- DONE: Enable flag archiving operations (soft delete)
+  - [x] Implement archiveUnusedFlags() function
+  - [x] Add archiveFeatureFlag() in API client
+  - [x] Create safe archiving with validation checks
+  - [x] Implement bulk archiving with rate limiting
+  - [x] Add archive confirmation and rollback capabilities
 - TODO: Ensure consistency checks for cleanup operations
   - [ ] Validate flag states before and after operations
   - [ ] Implement cross-reference validation
