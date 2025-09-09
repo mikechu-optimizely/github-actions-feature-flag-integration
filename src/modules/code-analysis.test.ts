@@ -16,12 +16,17 @@ import { CodeAnalysisConfig } from "../types/config.ts";
 
 /**
  * Helper to create a temporary directory with test files.
+ * Uses unique prefixes to prevent race conditions in parallel tests.
  */
 async function withTempFiles(
   files: Record<string, string>,
   fn: (dir: string) => Promise<void>,
 ) {
-  const dir = await Deno.makeTempDir();
+  // Create unique prefix to prevent parallel test conflicts
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  const prefix = `code_analysis_test_${timestamp}_${randomSuffix}_`;
+  const dir = await Deno.makeTempDir({ prefix });
   try {
     for (const [name, content] of Object.entries(files)) {
       const filePath = join(dir, name);
@@ -425,7 +430,8 @@ Deno.test("collectSourceFilesWithConfig respects exclude patterns", async () => 
     assertEquals(result.filter((f) => f.endsWith("utils.ts")).length, 1);
 
     // Should exclude test files, docs, node_modules, and dist
-    assertEquals(result.filter((f) => f.includes("test")).length, 0);
+    // Check for specific excluded files rather than substring matches
+    assertEquals(result.filter((f) => f.endsWith("main.test.ts")).length, 0);
     assertEquals(result.filter((f) => f.includes("node_modules")).length, 0);
     assertEquals(result.filter((f) => f.includes("dist")).length, 0);
     assertEquals(result.filter((f) => f.endsWith(".md")).length, 0);

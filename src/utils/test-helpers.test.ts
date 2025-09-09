@@ -115,11 +115,16 @@ Deno.test("createMockFetch validates URL patterns", async () => {
   }
 });
 
+/**
+ * Test for environment setup/cleanup functions that modify global state.
+ * Runs serially with proper sanitization checks.
+ */
 Deno.test({
-  name: "setupTestEnvironment and cleanupTestEnvironment work correctly",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: () => {
+  name: "Test Environment Management Tests",
+  sanitizeOps: true, // Restore proper sanitization
+  sanitizeResources: true,
+  fn: async (t) => {
+    await t.step("setupTestEnvironment and cleanupTestEnvironment work correctly", () => {
     // Store original values to restore after test
     const originalEnv: Record<string, string | undefined> = {};
     const envVarsToCheck = [
@@ -186,6 +191,7 @@ Deno.test({
         }
       }
     }
+    });
   },
 });
 

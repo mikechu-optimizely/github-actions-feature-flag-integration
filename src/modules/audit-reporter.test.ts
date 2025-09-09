@@ -12,6 +12,10 @@ import {
   assertMatch,
 } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { OptimizelyFlag } from "../types/optimizely.ts";
+import {
+  cleanupTempDir as _cleanupTempDir,
+  createTempDir as _createTempDir,
+} from "../utils/test-helpers.ts";
 
 function createEvent(
   type: AuditEventType,
@@ -26,8 +30,16 @@ function createEvent(
   };
 }
 
+// Helper to create unique test file paths to prevent race conditions
+function createUniqueTestPath(baseName: string): string {
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  return `${baseName}_${timestamp}_${randomSuffix}`;
+}
+
 Deno.test("AuditReporter logs events in memory and to console", () => {
-  const reporter = new AuditReporter("reports/test-audit.log");
+  const logPath = createUniqueTestPath("reports/test-audit.log");
+  const reporter = new AuditReporter(logPath);
   const event = createEvent("flag_archived", "Flag archived", { key: "flag1" });
   reporter.log(event);
   assertEquals(reporter.getSummary().total, 1);
@@ -38,43 +50,90 @@ Deno.test("AuditReporter logs events in memory and to console", () => {
 });
 
 Deno.test("AuditReporter flush writes events to file and clears memory", async () => {
-  const reporter = new AuditReporter("reports/test-audit.log");
+  const logPath = createUniqueTestPath("reports/test-audit.log");
+  const reporter = new AuditReporter(logPath);
   const event = createEvent("flag_archived", "Flag archived", { key: "flag2" });
   reporter.log(event);
-  await reporter.flush();
-  // File should exist and contain the event
-  const content = await Deno.readTextFile("reports/test-audit.log");
-  assert(content.includes("flag_archived"));
-  // Memory should be cleared
-  assertEquals(reporter.getSummary().total, 0);
-  // Clean up
-  await Deno.remove("reports/test-audit.log");
+
+  try {
+    await reporter.flush();
+    // File should exist and contain the event
+    const content = await Deno.readTextFile(logPath);
+    assert(content.includes("flag_archived"));
+    // Memory should be cleared
+    assertEquals(reporter.getSummary().total, 0);
+  } finally {
+    // Clean up - remove file and any parent directories created
+    try {
+      await Deno.remove(logPath);
+      // Try to remove parent directory if empty
+      const dirPath = logPath.substring(0, logPath.lastIndexOf("/"));
+      if (dirPath !== logPath) {
+        await Deno.remove(dirPath).catch(() => {});
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 });
 
 Deno.test("AuditReporter generateSummaryReport writes summary JSON", async () => {
-  const reporter = new AuditReporter("reports/test-audit.log");
+  const logPath = createUniqueTestPath("reports/test-audit.log");
+  const summaryPath = createUniqueTestPath("reports/test-summary.json");
+  const reporter = new AuditReporter(logPath);
   reporter.log(createEvent("flag_in_use", "Flag in use", { key: "flag3" }));
   reporter.log(createEvent("flag_unused", "Flag unused", { key: "flag4" }));
-  await reporter.generateSummaryReport("reports/test-summary.json");
-  const summary = JSON.parse(
-    await Deno.readTextFile("reports/test-summary.json"),
-  );
-  assertEquals(summary.total, 2);
-  assertEquals(summary.byType.flag_in_use, 1);
-  assertEquals(summary.byType.flag_unused, 1);
-  // Clean up
-  await Deno.remove("reports/test-summary.json");
+
+  try {
+    await reporter.generateSummaryReport(summaryPath);
+    const summary = JSON.parse(
+      await Deno.readTextFile(summaryPath),
+    );
+    assertEquals(summary.total, 2);
+    assertEquals(summary.byType.flag_in_use, 1);
+    assertEquals(summary.byType.flag_unused, 1);
+  } finally {
+    // Clean up
+    try {
+      await Deno.remove(summaryPath);
+      // Try to remove parent directory if empty
+      const dirPath = summaryPath.substring(0, summaryPath.lastIndexOf("/"));
+      if (dirPath !== summaryPath) {
+        await Deno.remove(dirPath).catch(() => {});
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 });
 
 Deno.test("AuditReporter #ensureLogDir creates directory if missing", async () => {
-  const reporter = new AuditReporter("reports/subdir/test.log");
+  const logPath = createUniqueTestPath("reports/subdir/test.log");
+  const reporter = new AuditReporter(logPath);
   reporter.log(createEvent("info", "Info event"));
-  await reporter.flush();
-  const content = await Deno.readTextFile("reports/subdir/test.log");
-  assertMatch(content, /Info event/);
-  // Clean up
-  await Deno.remove("reports/subdir/test.log");
-  await Deno.remove("reports/subdir");
+
+  try {
+    await reporter.flush();
+    const content = await Deno.readTextFile(logPath);
+    assertMatch(content, /Info event/);
+  } finally {
+    // Clean up - remove file and directories
+    try {
+      await Deno.remove(logPath);
+      // Remove subdirectory if empty
+      const dirPath = logPath.substring(0, logPath.lastIndexOf("/"));
+      if (dirPath !== logPath) {
+        await Deno.remove(dirPath).catch(() => {});
+        // Remove parent reports directory if empty
+        const parentDir = dirPath.substring(0, dirPath.lastIndexOf("/"));
+        if (parentDir !== dirPath && parentDir.endsWith("reports")) {
+          await Deno.remove(parentDir).catch(() => {});
+        }
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 });
 
 function createUserContext(): UserContext {
@@ -140,7 +199,8 @@ function createOptimizelyFlag(): OptimizelyFlag {
 }
 
 Deno.test("AuditReporter logFlagOperation creates comprehensive audit event", () => {
-  const reporter = new AuditReporter("reports/test-flag-audit.log");
+  const logPath = createUniqueTestPath("reports/test-flag-audit.log");
+  const reporter = new AuditReporter(logPath);
   const userContext = createUserContext();
   const operationContext = createOperationContext("archive");
   const flagData = createOptimizelyFlag();
@@ -160,7 +220,8 @@ Deno.test("AuditReporter logFlagOperation creates comprehensive audit event", ()
 });
 
 Deno.test("AuditReporter logApiOperation tracks API calls with context", () => {
-  const reporter = new AuditReporter("reports/test-api-audit.log");
+  const logPath = createUniqueTestPath("reports/test-api-audit.log");
+  const reporter = new AuditReporter(logPath);
   const userContext = createUserContext();
   const operationContext = createOperationContext("sync");
 
@@ -179,7 +240,8 @@ Deno.test("AuditReporter logApiOperation tracks API calls with context", () => {
 });
 
 Deno.test("AuditReporter logApiOperation handles error status codes", () => {
-  const reporter = new AuditReporter("reports/test-api-error-audit.log");
+  const logPath = createUniqueTestPath("reports/test-api-error-audit.log");
+  const reporter = new AuditReporter(logPath);
   const userContext = createUserContext();
   const operationContext = createOperationContext("sync");
 

@@ -291,10 +291,14 @@ export async function withTestEnvironment(
 }
 
 /**
- * Creates a temporary directory for test files.
+ * Creates a temporary directory for test files with unique prefixes to prevent race conditions.
  */
 export async function createTempDir(prefix = "test-"): Promise<string> {
-  const tempDir = await Deno.makeTempDir({ prefix });
+  // Create unique prefix using timestamp and random string to prevent parallel test conflicts
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  const uniquePrefix = `${prefix}${timestamp}_${randomSuffix}_`;
+  const tempDir = await Deno.makeTempDir({ prefix: uniquePrefix });
   return tempDir;
 }
 

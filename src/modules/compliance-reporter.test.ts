@@ -250,8 +250,11 @@ Deno.test("ComplianceReporter exports CI artifacts", async () => {
 
   const report = complianceReporter.generateComplianceReport(usageReport);
 
-  // Use temporary directory for testing
-  const tempDir = await Deno.makeTempDir();
+  // Use temporary directory for testing with unique prefix
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  const prefix = `compliance_test_${timestamp}_${randomSuffix}_`;
+  const tempDir = await Deno.makeTempDir({ prefix });
 
   try {
     await complianceReporter.exportForCiArtifacts(report, tempDir);
