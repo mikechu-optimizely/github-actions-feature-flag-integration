@@ -46,14 +46,14 @@
     // Coverage tasks: Generate coverage reports for both serial and parallel tests
     "test:coverage:serial": "deno test --allow-all --coverage=coverage src/**/*.serial.test.ts",
     "test:coverage:parallel": "deno test --allow-all --coverage=coverage --parallel --ignore='**/*.serial.test.ts' src/",
-    "test:coverage:report": "deno coverage coverage --lcov --output=coverage.lcov",
+    "test:coverage:report": "deno coverage coverage --lcov --output=coverage/coverage.lcov",
     "test:coverage": {
       "dependencies": ["test:coverage:serial"],
       "command": "deno task test:coverage:parallel && deno task test:coverage:report"
     },
     // CI tasks: Run tests with JUnit reporting for CI/CD pipelines
-    "test:ci:serial": "deno test --allow-all --coverage=coverage --reporter=junit --junit-path=./test-results.xml src/**/*.serial.test.ts",
-    "test:ci:parallel": "deno test --allow-all --coverage=coverage --reporter=junit --junit-path=./test-results-parallel.xml --parallel --ignore='**/*.serial.test.ts' src/",
+    "test:ci:serial": "deno test --allow-all --coverage=coverage --reporter=junit --junit-path=./reports/test-results-serial.xml src/**/*.serial.test.ts",
+    "test:ci:parallel": "deno test --allow-all --coverage=coverage --reporter=junit --junit-path=./reports/test-results-parallel.xml --parallel --ignore='**/*.serial.test.ts' src/",
     "test:ci": {
       "dependencies": ["test:ci:serial"],
       "command": "deno task test:ci:parallel"
