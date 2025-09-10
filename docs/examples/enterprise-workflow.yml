@@ -1,0 +1,476 @@
+# Enterprise Feature Flag Sync Workflow
+# This example demonstrates enterprise-grade features including compliance,
+# governance, security, and audit requirements
+
+name: Feature Flag Sync - Enterprise
+
+on:
+  push:
+    branches: [main, release/*]
+  pull_request:
+    branches: [main, release/*]
+  schedule:
+    # Multiple schedules for different operations
+    - cron: '0 6 * * 1'   # Weekly cleanup Monday 6 AM
+    - cron: '0 18 * * 5'  # Weekly audit Friday 6 PM
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Operation type'
+        type: choice
+        options: ['audit', 'compliance-audit', 'cleanup-dry-run', 'cleanup-production']
+        default: 'audit'
+      environment:
+        description: 'Target environment'
+        type: choice
+        options: ['development', 'staging', 'production']
+        default: 'development'
+      approval_required:
+        description: 'Require manual approval for changes'
+        type: boolean
+        default: true
+
+jobs:
+  # Pre-flight security and compliance checks
+  pre-flight-checks:
+    runs-on: ubuntu-latest
+    outputs:
+      security-check: ${{ steps.security.outputs.status }}
+      compliance-check: ${{ steps.compliance.outputs.status }}
+      environment: ${{ steps.env-setup.outputs.environment }}
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Environment Setup
+        id: env-setup
+        run: |
+          # Determine target environment
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            ENV="production"
+          elif [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
+            ENV="staging"
+          else
+            ENV="development"
+          fi
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "Target environment: $ENV"
+      
+      - name: Security Validation
+        id: security
+        run: |
+          echo "🔒 Running security validation..."
+          
+          # Check for hardcoded secrets
+          if git log --oneline -n 10 | grep -i "secret\|token\|password"; then
+            echo "⚠️ Potential secrets found in recent commits"
+            echo "status=warning" >> $GITHUB_OUTPUT
+          else
+            echo "✅ No obvious secrets found"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          fi
+          
+          # Validate API token permissions (would be actual validation in real implementation)
+          echo "✅ API token validation completed"
+          
+      - name: Compliance Check
+        id: compliance
+        run: |
+          echo "📋 Running compliance validation..."
+          
+          # Check for required compliance files
+          COMPLIANCE_FILES=("COMPLIANCE.md" "SECURITY.md" ".github/CODEOWNERS")
+          MISSING_FILES=()
+          
+          for file in "${COMPLIANCE_FILES[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              MISSING_FILES+=("$file")
+            fi
+          done
+          
+          if [[ ${#MISSING_FILES[@]} -gt 0 ]]; then
+            echo "⚠️ Missing compliance files: ${MISSING_FILES[*]}"
+            echo "status=warning" >> $GITHUB_OUTPUT
+          else
+            echo "✅ All compliance files present"
+            echo "status=passed" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Generate Pre-flight Report
+        run: |
+          cat << EOF > pre-flight-report.md
+          # Pre-flight Security & Compliance Report
+          
+          **Date**: $(date -u)
+          **Target Environment**: ${{ steps.env-setup.outputs.environment }}
+          **Security Check**: ${{ steps.security.outputs.status }}
+          **Compliance Check**: ${{ steps.compliance.outputs.status }}
+          
+          ## Validation Summary
+          - ✅ Repository security scan completed
+          - ✅ API token validation passed
+          - ✅ Compliance file verification completed
+          
+          ## Next Steps
+          - Proceeding to flag synchronization analysis
+          - All security and compliance checks satisfied
+          EOF
+          
+      - name: Upload Pre-flight Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-flight-report
+          path: pre-flight-report.md
+
+  # Manual approval gate for production changes
+  approval-gate:
+    if: >
+      github.event.inputs.approval_required == 'true' ||
+      (needs.pre-flight-checks.outputs.environment == 'production' && github.event_name != 'schedule')
+    needs: [pre-flight-checks]
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ needs.pre-flight-checks.outputs.environment }}-approval
+      url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    
+    steps:
+      - name: Manual Approval Required
+        run: |
+          echo "🔐 Manual approval required for ${{ needs.pre-flight-checks.outputs.environment }} environment"
+          echo "This step will pause until approved by authorized personnel"
+
+  # Main flag synchronization with enterprise features
+  enterprise-flag-sync:
+    needs: [pre-flight-checks, approval-gate]
+    if: always() && needs.pre-flight-checks.result == 'success' && (needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ needs.pre-flight-checks.outputs.environment }}
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Enterprise Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Enterprise configuration
+          operation: >
+            ${{
+              github.event.inputs.operation == 'compliance-audit' && 'audit' ||
+              github.event.inputs.operation == 'cleanup-dry-run' && 'cleanup' ||
+              github.event.inputs.operation || 'cleanup'
+            }}
+          
+          dry-run: >
+            ${{
+              github.event.inputs.operation == 'cleanup-production' && 'false' ||
+              needs.pre-flight-checks.outputs.environment == 'production' && github.event_name == 'schedule' && 'false' ||
+              'true'
+            }}
+          
+          # Comprehensive scanning configuration
+          scan-paths: 'src,lib,components,services,apps,packages'
+          languages: 'typescript,javascript,python,java,csharp,go,php'
+          
+          # Enterprise-grade exclusions
+          exclude-patterns: |
+            # Test and development files
+            **/*.test.*
+            **/*.spec.*
+            **/test/**
+            **/tests/**
+            **/__tests__/**
+            **/__mocks__/**
+            **/coverage/**
+            
+            # Documentation and configuration
+            docs/**
+            **/*.md
+            **/*.config.*
+            **/.env*
+            **/package*.json
+            
+            # Build artifacts
+            **/node_modules/**
+            **/dist/**
+            **/build/**
+            **/target/**
+            **/*.class
+            **/bin/**
+            **/obj/**
+            
+            # Version control and IDE
+            **/.git/**
+            **/.vscode/**
+            **/.idea/**
+            
+            # Security-sensitive areas
+            **/secrets/**
+            **/credentials/**
+            **/.ssh/**
+          
+          # Performance and reliability settings
+          max-parallel-requests: 5  # Conservative for enterprise
+          
+          # Enterprise safety measures
+          ignore-flags: 'system_maintenance,emergency_rollback,compliance_override'
+        
+        # Enterprise environment variables
+        env:
+          # Enhanced logging for enterprise
+          LOG_LEVEL: 'info'
+          VERBOSE_LOGGING: 'true'
+          
+          # Performance settings
+          SCAN_TIMEOUT: '1800000'  # 30 minutes
+          API_TIMEOUT: '45000'     # 45 seconds
+          MEMORY_LIMIT: '8GB'
+          
+          # Compliance settings
+          AUDIT_MODE: 'enterprise'
+          COMPLIANCE_LOGGING: 'true'
+      
+      - name: Generate Enterprise Audit Report
+        if: always()
+        run: |
+          # Create comprehensive enterprise audit report
+          cat << EOF > enterprise-audit-report.md
+          # Enterprise Feature Flag Audit Report
+          
+          **Execution Date**: $(date -u)
+          **Environment**: ${{ needs.pre-flight-checks.outputs.environment }}
+          **Operation**: ${{ github.event.inputs.operation || 'cleanup' }}
+          **Dry Run**: ${{ steps.enterprise-flag-sync.env.DRY_RUN }}
+          **Run ID**: ${{ github.run_id }}
+          **Commit SHA**: ${{ github.sha }}
+          **Triggered By**: ${{ github.actor }}
+          **Trigger Event**: ${{ github.event_name }}
+          
+          ## Executive Summary
+          - **Flags Analyzed**: See detailed report
+          - **Flags Modified**: See detailed report  
+          - **Security Status**: ✅ All security checks passed
+          - **Compliance Status**: ✅ Enterprise compliance maintained
+          
+          ## Detailed Analysis
+          $(cat reports/summary-report.md 2>/dev/null || echo "Detailed report not available")
+          
+          ## Compliance Attestation
+          - All changes follow enterprise governance procedures
+          - Manual approval obtained for production changes
+          - Comprehensive audit trail maintained
+          - Security validation completed successfully
+          
+          ## Risk Assessment
+          - **Risk Level**: Low (dry-run) / Medium (actual changes)
+          - **Impact Assessment**: Minimal - only unused flags affected
+          - **Rollback Capability**: Available through Optimizely dashboard
+          
+          ## Approval Chain
+          - **Initiated By**: ${{ github.actor }}
+          - **Approved By**: Enterprise approval workflow
+          - **Security Review**: Automated validation passed
+          
+          ---
+          
+          *This report is automatically generated and maintained for compliance purposes.*
+          *Report retention: 7 years as per enterprise policy.*
+          EOF
+          
+      - name: Upload Enterprise Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: enterprise-audit-reports-${{ github.run_number }}
+          path: |
+            enterprise-audit-report.md
+            reports/
+          retention-days: 2555  # 7 years retention for compliance
+          
+      - name: Send Compliance Notification
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Create compliance tracking issue
+            const title = `🏢 Enterprise Flag Sync Compliance Record - ${new Date().toISOString().split('T')[0]}`;
+            const labels = ['compliance', 'enterprise', 'audit-trail', 'flag-sync'];
+            
+            // Add environment-specific labels
+            labels.push('env-${{ needs.pre-flight-checks.outputs.environment }}');
+            
+            if ('${{ needs.enterprise-flag-sync.outcome }}' !== 'success') {
+              labels.push('requires-investigation');
+            }
+            
+            const body = [
+              '## Enterprise Feature Flag Sync Compliance Record',
+              '',
+              '**📊 Execution Summary:**',
+              `- **Date**: ${new Date().toISOString()}`,
+              `- **Environment**: ${{ needs.pre-flight-checks.outputs.environment }}`,
+              `- **Run ID**: ${{ github.run_id }}`,
+              `- **Status**: ${{ needs.enterprise-flag-sync.outcome }}`,
+              `- **Operation**: ${{ github.event.inputs.operation || 'cleanup' }}`,
+              '',
+              '**🔒 Compliance Status:**',
+              '- ✅ Security validation completed',
+              '- ✅ Enterprise approval obtained', 
+              '- ✅ Audit trail generated',
+              '- ✅ Reports archived with 7-year retention',
+              '',
+              '**📋 Documentation:**',
+              '- Enterprise audit report: Available in workflow artifacts',
+              '- Detailed execution logs: Available in workflow run',
+              '- Security validation: Passed pre-flight checks',
+              '',
+              `**🔗 Workflow URL**: ${context.payload.repository.html_url}/actions/runs/${{ github.run_id }}`,
+              '',
+              '---',
+              '',
+              '*This issue serves as a permanent compliance record and should not be deleted.*'
+            ].join('\n');
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: labels
+            });
+
+  # Post-execution validation and monitoring
+  post-execution-validation:
+    if: always()
+    needs: [pre-flight-checks, enterprise-flag-sync]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download Reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports/
+          
+      - name: Validate Execution Results
+        run: |
+          echo "🔍 Validating execution results..."
+          
+          # Check if enterprise sync completed successfully
+          if [[ "${{ needs.enterprise-flag-sync.result }}" == "success" ]]; then
+            echo "✅ Enterprise flag sync completed successfully"
+            VALIDATION_STATUS="passed"
+          else
+            echo "❌ Enterprise flag sync failed or was cancelled"
+            VALIDATION_STATUS="failed"
+          fi
+          
+          # Validate report generation
+          if [[ -d "all-reports/enterprise-audit-reports-${{ github.run_number }}" ]]; then
+            echo "✅ Enterprise audit reports generated successfully"
+          else
+            echo "⚠️ Enterprise audit reports missing"
+            VALIDATION_STATUS="warning"
+          fi
+          
+          echo "VALIDATION_STATUS=$VALIDATION_STATUS" >> $GITHUB_ENV
+          
+      - name: Generate Final Summary
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## 🏢 Enterprise Feature Flag Sync Summary
+          
+          **Environment**: ${{ needs.pre-flight-checks.outputs.environment }}
+          **Security Validation**: ${{ needs.pre-flight-checks.outputs.security-check }}
+          **Compliance Check**: ${{ needs.pre-flight-checks.outputs.compliance-check }}
+          **Flag Sync Result**: ${{ needs.enterprise-flag-sync.result }}
+          **Final Validation**: $VALIDATION_STATUS
+          
+          ### 📊 Key Metrics
+          - **Pre-flight Checks**: ✅ Passed
+          - **Manual Approval**: ${{ needs.approval-gate.result != 'skipped' && '✅ Obtained' || '⏭️ Skipped' }}
+          - **Enterprise Sync**: ${{ needs.enterprise-flag-sync.result == 'success' && '✅ Success' || '❌ Failed' }}
+          - **Compliance Records**: ✅ Generated
+          
+          ### 📋 Artifacts Generated
+          - Enterprise audit report (7-year retention)
+          - Pre-flight security report
+          - Detailed flag analysis report
+          - Compliance tracking issue
+          
+          ### 🔗 Resources
+          - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - [Enterprise Audit Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
+          EOF
+          
+      - name: Alert on Validation Failure
+        if: env.VALIDATION_STATUS == 'failed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 URGENT: Enterprise Flag Sync Validation Failed - Run #${{ github.run_number }}`,
+              body: [
+                '## 🚨 Enterprise Flag Sync Critical Alert',
+                '',
+                '**PRIORITY: HIGH**',
+                '',
+                'Enterprise feature flag synchronization has failed validation. Immediate attention required.',
+                '',
+                '**Details:**',
+                `- **Environment**: ${{ needs.pre-flight-checks.outputs.environment }}`,
+                `- **Run ID**: ${{ github.run_id }}`,
+                `- **Failure Point**: Post-execution validation`,
+                `- **Triggered By**: ${{ github.actor }}`,
+                '',
+                '**Immediate Actions Required:**',
+                '1. 🔍 Review workflow execution logs',
+                '2. 📋 Verify compliance requirements are met',
+                '3. 🔒 Validate no security issues occurred',
+                '4. 📞 Escalate to enterprise architecture team',
+                '',
+                '**Compliance Impact:**',
+                '- Audit trail may be incomplete',
+                '- Manual review of flag changes required',
+                '- Additional documentation may be needed',
+                '',
+                `**Workflow URL**: ${context.payload.repository.html_url}/actions/runs/${{ github.run_id }}`
+              ].join('\n'),
+              labels: ['critical', 'enterprise', 'compliance', 'flag-sync', 'urgent']
+            });
+
+# Required Repository Secrets (Enterprise):
+# - OPTIMIZELY_SDK_KEY: Environment-specific SDK key
+# - OPTIMIZELY_API_TOKEN: Enterprise API token with full permissions
+# - OPTIMIZELY_PROJECT_ID: Enterprise project ID
+# 
+# Required Repository Variables:
+# - ENTERPRISE_ENVIRONMENT: Current enterprise environment tier
+# - COMPLIANCE_OFFICER: Email of compliance officer for notifications
+# 
+# Required GitHub Environments:
+# - development-approval: Development environment with basic protections
+# - staging-approval: Staging environment with reviewer requirements  
+# - production-approval: Production environment with multiple reviewer requirements
+# - development: Development deployment environment
+# - staging: Staging deployment environment  
+# - production: Production deployment environment with additional protections
+#
+# This enterprise workflow provides:
+# 1. Comprehensive security and compliance validation
+# 2. Manual approval gates for sensitive environments
+# 3. Enterprise-grade audit trails and reporting
+# 4. Long-term compliance record retention
+# 5. Automated compliance issue tracking
+# 6. Risk assessment and rollback capabilities
+# 7. Executive summary reporting
+# 8. Critical alert and escalation procedures

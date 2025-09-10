@@ -1,0 +1,60 @@
+# Basic Feature Flag Sync Workflow
+# Copy this file to .github/workflows/feature-flag-sync.yml in your repository
+
+name: Feature Flag Sync - Basic
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 6 AM UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode'
+        type: boolean
+        default: true
+
+jobs:
+  sync-feature-flags:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Sync Feature Flags
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          # Required configuration
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Optional: Override dry-run for manual execution
+          dry-run: ${{ github.event.inputs.dry_run || 'true' }}
+      
+      - name: Upload Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flag-sync-report-${{ github.run_number }}
+          path: reports/
+          retention-days: 30
+          if-no-files-found: warn
+
+# Required Repository Secrets:
+# - OPTIMIZELY_SDK_KEY: Your Optimizely SDK key
+# - OPTIMIZELY_API_TOKEN: API token with feature_flags:read and feature_flags:write permissions
+# - OPTIMIZELY_PROJECT_ID: Your Optimizely project ID
+
+# This workflow will:
+# 1. Run in dry-run mode by default (safe preview)
+# 2. Scan 'src' and 'lib' directories for TypeScript and JavaScript files
+# 3. Compare with flags in your Optimizely project
+# 4. Generate reports showing which flags would be archived
+# 5. Upload reports as workflow artifacts

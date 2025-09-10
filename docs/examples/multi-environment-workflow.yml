@@ -1,0 +1,248 @@
+# Multi-Environment Feature Flag Sync Workflow
+# This example shows how to handle different environments (staging/production)
+# with different configurations and safety measures
+
+name: Feature Flag Sync - Multi Environment
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Weekly cleanup on Monday 6 AM
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        type: choice
+        options: ['staging', 'production']
+        default: 'staging'
+      operation:
+        description: 'Operation type'
+        type: choice
+        options: ['audit', 'cleanup']
+        default: 'audit'
+      dry_run:
+        description: 'Dry run mode'
+        type: boolean
+        default: true
+
+jobs:
+  # Staging environment - safe validation
+  staging-validation:
+    if: >
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Staging Flag Validation
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY_STAGING }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Staging-specific configuration
+          operation: ${{ github.event.inputs.operation || 'audit' }}
+          dry-run: 'true'  # Always dry-run in staging
+          scan-paths: 'src,lib,components,pages'
+          languages: 'typescript,javascript,python'
+          max-parallel-requests: 10  # Higher throughput for staging
+          
+          # Comprehensive exclusions for staging
+          exclude-patterns: |
+            **/*.test.*
+            **/*.spec.*
+            **/test/**
+            **/tests/**
+            **/__tests__/**
+            docs/**
+            **/*.md
+            **/node_modules/**
+            **/dist/**
+            **/build/**
+      
+      - name: Upload Staging Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-flag-report-${{ github.run_number }}
+          path: reports/
+          retention-days: 7
+          
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'reports/summary-report.md';
+            
+            if (fs.existsSync(path)) {
+              const report = fs.readFileSync(path, 'utf8');
+              const body = [
+                '## 🎯 Feature Flag Analysis - Staging',
+                '',
+                report,
+                '',
+                '> This is a staging validation. No flags were actually modified.',
+                '',
+                `📊 **View detailed report**: [Download artifacts](${context.payload.pull_request.html_url}/checks)`
+              ].join('\n');
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+
+  # Production environment - careful cleanup
+  production-cleanup:
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'schedule') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Production Flag Cleanup
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY_PROD }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Production-specific configuration
+          operation: ${{ github.event.inputs.operation || 'cleanup' }}
+          dry-run: ${{ github.event.inputs.dry_run || (github.event_name == 'schedule' && 'false' || 'true') }}
+          scan-paths: 'src,lib,components'  # More focused scan for production
+          languages: 'typescript,javascript,python'
+          max-parallel-requests: 3  # Conservative for production
+          
+          # Production exclusions - be extra careful
+          exclude-patterns: |
+            **/*.test.*
+            **/*.spec.*
+            **/test/**
+            **/tests/**
+            **/__tests__/**
+            **/__mocks__/**
+            docs/**
+            **/*.md
+            **/README*
+            **/node_modules/**
+            **/dist/**
+            **/build/**
+            **/staging/**
+            **/*.config.*
+            
+          # Safety measures
+          ignore-flags: 'critical_feature,system_maintenance,emergency_flag'
+          
+      - name: Upload Production Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-flag-report-${{ github.run_number }}
+          path: reports/
+          retention-days: 90  # Longer retention for production
+          
+      - name: Create Issue on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Production Flag Sync Failed - Run #${{ github.run_number }}`;
+            const body = [
+              '## Production Flag Sync Failure',
+              '',
+              '**Details:**',
+              `- **Run ID**: ${{ github.run_id }}`,
+              `- **Commit**: ${{ github.sha }}`,
+              `- **Trigger**: ${{ github.event_name }}`,
+              `- **Branch**: ${{ github.ref_name }}`,
+              '',
+              '**Action Required:**',
+              '1. Review the workflow logs',
+              '2. Check the uploaded report artifacts', 
+              '3. Investigate any API or configuration issues',
+              '4. Manual flag review may be required',
+              '',
+              `**Workflow URL**: ${context.payload.repository.html_url}/actions/runs/${{ github.run_id }}`
+            ].join('\n');
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['bug', 'production', 'flag-sync', 'urgent']
+            });
+            
+      - name: Slack Notification (Production Changes)
+        if: success() && github.event_name == 'schedule'
+        run: |
+          # Add your Slack webhook notification here if needed
+          echo "Production flag cleanup completed successfully"
+          echo "Check artifacts for detailed report"
+
+  # Summary job for workflow overview
+  workflow-summary:
+    if: always()
+    needs: [staging-validation, production-cleanup]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Workflow Summary
+        run: |
+          echo "## Feature Flag Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run ID**: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.staging-validation.result }}" != "skipped" ]]; then
+            echo "**Staging Validation**: ${{ needs.staging-validation.result }} ✅" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.production-cleanup.result }}" != "skipped" ]]; then
+            echo "**Production Cleanup**: ${{ needs.production-cleanup.result }} 🎯" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Reports available in workflow artifacts**" >> $GITHUB_STEP_SUMMARY
+
+# Required Repository Secrets:
+# - OPTIMIZELY_SDK_KEY_STAGING: Staging environment SDK key
+# - OPTIMIZELY_SDK_KEY_PROD: Production environment SDK key  
+# - OPTIMIZELY_API_TOKEN: API token with appropriate permissions
+# - OPTIMIZELY_PROJECT_ID: Your Optimizely project ID
+
+# GitHub Environments Configuration:
+# Create 'staging' and 'production' environments in repository settings
+# Configure environment-specific protection rules as needed
+
+# This workflow provides:
+# 1. Separate staging and production handling
+# 2. Safe validation on pull requests
+# 3. Scheduled production cleanup
+# 4. Comprehensive error handling and notifications
+# 5. Different configuration for each environment

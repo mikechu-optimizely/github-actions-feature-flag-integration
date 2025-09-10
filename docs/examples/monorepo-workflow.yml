@@ -1,0 +1,286 @@
+# Monorepo Feature Flag Sync Workflow
+# This example demonstrates handling a large monorepo with multiple services,
+# teams, and programming languages with optimized performance
+
+name: Feature Flag Sync - Monorepo
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run twice weekly - Monday and Thursday at 6 AM
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to sync (all, frontend, backend, mobile, shared)'
+        type: choice
+        options: ['all', 'frontend', 'backend', 'mobile', 'shared']
+        default: 'all'
+      operation:
+        description: 'Operation type'
+        type: choice
+        options: ['audit', 'cleanup']
+        default: 'audit'
+      dry_run:
+        description: 'Dry run mode'
+        type: boolean
+        default: true
+
+jobs:
+  # Matrix strategy for different services/teams
+  flag-sync-matrix:
+    strategy:
+      fail-fast: false  # Don't stop other services if one fails
+      matrix:
+        service:
+          - name: 'frontend'
+            path: 'apps/frontend/src,packages/ui/src,packages/components/src'
+            languages: 'typescript,javascript'
+            exclude: '**/*.test.*,**/*.spec.*,**/*.stories.*,**/storybook/**'
+            parallel: 8
+            prefix: 'fe_'
+          
+          - name: 'backend'
+            path: 'apps/backend/src,packages/api/src,packages/shared/src'
+            languages: 'typescript,python'
+            exclude: '**/*.test.*,**/*.spec.*,**/tests/**,**/__pycache__/**'
+            parallel: 6
+            prefix: 'be_'
+          
+          - name: 'mobile'
+            path: 'apps/mobile/src,packages/mobile-shared/src'
+            languages: 'typescript,java'
+            exclude: '**/*.test.*,**/*.spec.*,**/test/**,**/build/**,**/target/**'
+            parallel: 5
+            prefix: 'mobile_'
+          
+          - name: 'data-platform'
+            path: 'apps/data-platform/src,packages/analytics/src'
+            languages: 'python,java'
+            exclude: '**/*.test.*,**/test_*.py,**/tests/**,**/__pycache__/**,**/target/**'
+            parallel: 4
+            prefix: 'data_'
+          
+          - name: 'shared'
+            path: 'packages/shared-utils/src,packages/feature-flags/src'
+            languages: 'typescript'
+            exclude: '**/*.test.*,**/*.spec.*,**/dist/**'
+            parallel: 6
+            prefix: 'shared_'
+
+    # Only run if service matches input or if 'all' is selected
+    if: >
+      github.event.inputs.service == 'all' || 
+      github.event.inputs.service == matrix.service.name ||
+      github.event_name != 'workflow_dispatch'
+    
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    name: Sync ${{ matrix.service.name }} flags
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: ${{ matrix.service.name }} Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Service-specific configuration
+          scan-paths: ${{ matrix.service.path }}
+          languages: ${{ matrix.service.languages }}
+          exclude-patterns: ${{ matrix.service.exclude }}
+          max-parallel-requests: ${{ matrix.service.parallel }}
+          flag-prefix: ${{ matrix.service.prefix }}
+          
+          # Operation configuration
+          operation: ${{ github.event.inputs.operation || 'cleanup' }}
+          dry-run: >
+            ${{
+              github.event_name == 'pull_request' && 'true' ||
+              github.event.inputs.dry_run || 
+              (github.ref == 'refs/heads/main' && github.event_name == 'schedule' && 'false' || 'true')
+            }}
+        
+        # Performance optimization environment
+        env:
+          PARALLEL_FILE_PROCESSING: 'true'
+          SCAN_TIMEOUT: '900000'  # 15 minutes for large repos
+          MEMORY_LIMIT: '4GB'
+          API_TIMEOUT: '15000'    # 15 seconds
+          
+      - name: Upload Service Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.service.name }}-flag-report-${{ github.run_number }}
+          path: reports/
+          retention-days: 14
+
+  # Aggregate reporting across all services
+  aggregate-report:
+    if: always()
+    needs: [flag-sync-matrix]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download All Reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports/
+          
+      - name: Aggregate Reports
+        run: |
+          # Create aggregated summary
+          echo "# Monorepo Feature Flag Sync Summary" > aggregate-summary.md
+          echo "" >> aggregate-summary.md
+          echo "**Run ID**: ${{ github.run_id }}" >> aggregate-summary.md
+          echo "**Trigger**: ${{ github.event_name }}" >> aggregate-summary.md
+          echo "**Branch**: ${{ github.ref_name }}" >> aggregate-summary.md
+          echo "**Date**: $(date -u)" >> aggregate-summary.md
+          echo "" >> aggregate-summary.md
+          
+          # Service-specific summaries
+          for service_dir in all-reports/*/; do
+            if [ -d "$service_dir" ]; then
+              service_name=$(basename "$service_dir" | sed 's/-flag-report-[0-9]*//')
+              echo "## $service_name Service" >> aggregate-summary.md
+              
+              if [ -f "$service_dir/summary-report.md" ]; then
+                cat "$service_dir/summary-report.md" >> aggregate-summary.md
+              else
+                echo "No report available" >> aggregate-summary.md
+              fi
+              echo "" >> aggregate-summary.md
+            fi
+          done
+          
+      - name: Upload Aggregate Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: aggregate-flag-report-${{ github.run_number }}
+          path: aggregate-summary.md
+          
+      - name: Create PR Comment (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            if (fs.existsSync('aggregate-summary.md')) {
+              const report = fs.readFileSync('aggregate-summary.md', 'utf8');
+              
+              const body = [
+                '## 🏢 Monorepo Feature Flag Analysis',
+                '',
+                report,
+                '',
+                '> **Note**: This analysis covers all services in the monorepo.',
+                '> Individual service reports are available in the workflow artifacts.',
+                '',
+                `📊 **Download detailed reports**: [View artifacts](${context.payload.pull_request.html_url}/checks)`
+              ].join('\n');
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+
+  # Performance monitoring job
+  performance-monitoring:
+    if: always()
+    needs: [flag-sync-matrix]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Performance Analysis
+        run: |
+          echo "## Performance Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Total Services Processed**: ${{ strategy.job-total }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Successful Services**: ${{ needs.flag-sync-matrix.result == 'success' && strategy.job-total || 'See individual job results' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow Duration**: Started at $(date -d '${{ github.event.created_at }}' '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Service breakdown
+          echo "### Service Results:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend**: TypeScript/JavaScript analysis" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend**: TypeScript/Python analysis" >> $GITHUB_STEP_SUMMARY  
+          echo "- **Mobile**: TypeScript/Java analysis" >> $GITHUB_STEP_SUMMARY
+          echo "- **Data Platform**: Python/Java analysis" >> $GITHUB_STEP_SUMMARY
+          echo "- **Shared**: TypeScript utilities analysis" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Alert on Performance Issues
+        if: >
+          needs.flag-sync-matrix.result == 'failure' ||
+          needs.flag-sync-matrix.result == 'cancelled'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `⚠️ Monorepo Flag Sync Performance Issue - Run #${{ github.run_number }}`,
+              body: [
+                '## Performance Alert: Monorepo Flag Sync',
+                '',
+                '**Issue**: One or more services failed during flag synchronization.',
+                '',
+                '**Details:**',
+                `- **Run ID**: ${{ github.run_id }}`,
+                `- **Trigger**: ${{ github.event_name }}`,
+                `- **Branch**: ${{ github.ref_name }}`,
+                '',
+                '**Investigation Steps:**',
+                '1. Check individual service job logs',
+                '2. Review timeout and memory usage', 
+                '3. Verify API rate limiting impacts',
+                '4. Consider adjusting parallel processing limits',
+                '',
+                `**Workflow URL**: ${context.payload.repository.html_url}/actions/runs/${{ github.run_id }}`
+              ].join('\n'),
+              labels: ['performance', 'flag-sync', 'monorepo', 'investigation-needed']
+            });
+
+# Repository Structure Expected:
+# ```
+# monorepo/
+# ├── apps/
+# │   ├── frontend/src/          # React/Next.js frontend
+# │   ├── backend/src/           # Node.js/Python backend
+# │   ├── mobile/src/            # React Native/native code
+# │   └── data-platform/src/     # Python/Java data services
+# ├── packages/
+# │   ├── ui/src/               # Shared UI components
+# │   ├── components/src/       # Shared React components  
+# │   ├── api/src/              # Shared API utilities
+# │   ├── shared/src/           # Common utilities
+# │   ├── mobile-shared/src/    # Mobile-specific shared code
+# │   ├── analytics/src/        # Analytics utilities
+# │   ├── shared-utils/src/     # Cross-platform utilities
+# │   └── feature-flags/src/    # Feature flag utilities
+# ```
+
+# Required Repository Secrets:
+# - OPTIMIZELY_SDK_KEY: Your Optimizely SDK key
+# - OPTIMIZELY_API_TOKEN: API token with feature_flags:read and feature_flags:write permissions
+# - OPTIMIZELY_PROJECT_ID: Your Optimizely project ID
+
+# This workflow provides:
+# 1. Service-specific flag analysis with appropriate language support
+# 2. Parallel processing across multiple services
+# 3. Team-specific flag prefixes for organization
+# 4. Performance optimization for large codebases
+# 5. Comprehensive reporting and aggregation
+# 6. Flexible manual execution per service
+# 7. Performance monitoring and alerting

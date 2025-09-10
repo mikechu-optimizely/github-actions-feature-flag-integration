@@ -1,0 +1,448 @@
+# Language-Specific Feature Flag Sync Workflows
+# This file contains multiple workflow examples tailored for different
+# programming languages and their specific patterns
+
+# =====================================
+# Python Django/Flask Application
+# =====================================
+
+name: Python Flag Sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 7 * * 2'  # Tuesday 7 AM
+
+jobs:
+  python-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Python Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Python-specific configuration
+          scan-paths: 'src,apps,myapp'
+          languages: 'python'
+          exclude-patterns: |
+            **/__pycache__/**
+            **/*.pyc
+            **/test_*.py
+            **/tests/**
+            **/*_test.py
+            **/migrations/**
+            **/venv/**
+            **/env/**
+            **/.pytest_cache/**
+            **/htmlcov/**
+
+---
+
+# =====================================
+# Java Spring Boot Application  
+# =====================================
+
+name: Java Flag Sync
+
+on:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 8 * * 3'  # Wednesday 8 AM
+
+jobs:
+  java-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Java Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Java-specific configuration
+          scan-paths: 'src/main/java,src/main/resources'
+          languages: 'java'
+          exclude-patterns: |
+            **/target/**
+            **/*.class
+            **/test/**
+            **/*Test.java
+            **/*Tests.java
+            **/TestUtils.java
+            **/.mvn/**
+            **/mvnw*
+            **/build/**
+
+---
+
+# =====================================
+# C# .NET Application
+# =====================================
+
+name: CSharp Flag Sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  csharp-flag-sync:
+    runs-on: windows-latest  # or ubuntu-latest for .NET Core
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: C# Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # C#-specific configuration
+          scan-paths: 'src,Controllers,Models,Services'
+          languages: 'csharp'
+          exclude-patterns: |
+            **/bin/**
+            **/obj/**
+            **/packages/**
+            **/*Test.cs
+            **/*Tests.cs
+            **/TestData/**
+            **/*.Designer.cs
+            **/AssemblyInfo.cs
+
+---
+
+# =====================================
+# Go Application
+# =====================================
+
+name: Go Flag Sync
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 9 * * 4'  # Thursday 9 AM
+
+jobs:
+  go-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Go Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Go-specific configuration
+          scan-paths: 'cmd,internal,pkg'
+          languages: 'go'
+          exclude-patterns: |
+            **/vendor/**
+            **/*_test.go
+            **/testdata/**
+            **/tests/**
+            **/go.mod
+            **/go.sum
+
+---
+
+# =====================================
+# PHP Laravel/Symfony Application
+# =====================================
+
+name: PHP Flag Sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  php-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: PHP Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # PHP-specific configuration
+          scan-paths: 'app,src,lib'
+          languages: 'php'
+          exclude-patterns: |
+            **/vendor/**
+            **/tests/**
+            **/*Test.php
+            **/*Tests.php
+            **/TestCase.php
+            **/bootstrap/**
+            **/storage/**
+            **/composer.lock
+
+---
+
+# =====================================
+# React/Next.js Frontend Application
+# =====================================
+
+name: React Flag Sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  react-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: React Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # React/Next.js-specific configuration
+          scan-paths: 'src,components,pages,hooks,utils'
+          languages: 'typescript,javascript'
+          exclude-patterns: |
+            **/node_modules/**
+            **/.next/**
+            **/dist/**
+            **/build/**
+            **/*.test.*
+            **/*.spec.*
+            **/__tests__/**
+            **/*.stories.*
+            **/storybook-static/**
+            **/.storybook/**
+            **/coverage/**
+            **/public/**
+
+---
+
+# =====================================
+# Vue.js Application  
+# =====================================
+
+name: Vue Flag Sync
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 10 * * 5'  # Friday 10 AM
+
+jobs:
+  vue-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Vue.js Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Vue.js-specific configuration
+          scan-paths: 'src,components,views,composables,stores'
+          languages: 'typescript,javascript'
+          exclude-patterns: |
+            **/node_modules/**
+            **/dist/**
+            **/.nuxt/**
+            **/*.test.*
+            **/*.spec.*
+            **/__tests__/**
+            **/coverage/**
+            **/public/**
+
+---
+
+# =====================================
+# Angular Application
+# =====================================
+
+name: Angular Flag Sync
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  angular-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Angular Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Angular-specific configuration
+          scan-paths: 'src/app,src/shared,src/core'
+          languages: 'typescript'
+          exclude-patterns: |
+            **/node_modules/**
+            **/dist/**
+            **/*.spec.ts
+            **/*.test.ts
+            **/e2e/**
+            **/coverage/**
+            **/environments/**
+            **/*.config.ts
+
+---
+
+# =====================================
+# React Native Mobile Application
+# =====================================
+
+name: React Native Flag Sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  react-native-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: React Native Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # React Native-specific configuration
+          scan-paths: 'src,components,screens,navigation,services'
+          languages: 'typescript,javascript'
+          exclude-patterns: |
+            **/node_modules/**
+            **/android/**
+            **/ios/**
+            **/__tests__/**
+            **/*.test.*
+            **/*.spec.*
+            **/coverage/**
+            **/metro.config.js
+            **/babel.config.js
+
+---
+
+# =====================================
+# Full-Stack TypeScript (Node.js + React)
+# =====================================
+
+name: Full-Stack TypeScript Flag Sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Monday 6 AM
+
+jobs:
+  fullstack-flag-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Full-Stack Feature Flag Sync
+        uses: optimizely/feature-flag-sync-action@v1
+        with:
+          optimizely-sdk-key: ${{ secrets.OPTIMIZELY_SDK_KEY }}
+          optimizely-token: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
+          
+          # Full-stack TypeScript configuration
+          scan-paths: 'client/src,server/src,shared/src'
+          languages: 'typescript,javascript'
+          exclude-patterns: |
+            **/node_modules/**
+            **/dist/**
+            **/build/**
+            **/.next/**
+            **/*.test.*
+            **/*.spec.*
+            **/__tests__/**
+            **/coverage/**
+            **/public/**
+            **/uploads/**
+          
+          # Higher parallel requests for full-stack app
+          max-parallel-requests: 8
+
+# =====================================
+# Custom Pattern Example
+# =====================================
+
+# If you have custom flag patterns, create a configuration file:
+# .github/optimizely-sync.yml
+
+# custom-patterns:
+#   typescript:
+#     - pattern: 'FeatureFlags\.([A-Z_]+)'
+#       flag-group: 1
+#     - pattern: 'useFlag\([\'"]([^\'\"]+)[\'"]\)'
+#       flag-group: 1
+#       
+#   python:
+#     - pattern: 'feature_flags\[\'([^\']+)\'\]'
+#       flag-group: 1
+#     - pattern: 'is_enabled\([\'"]([^\'\"]+)[\'"]\)'
+#       flag-group: 1
+#       
+#   java:
+#     - pattern: 'FeatureToggle\.([A-Z_]+)'
+#       flag-group: 1
+#     - pattern: 'checkFlag\("([^"]+)"\)'
+#       flag-group: 1
+
+# Then reference it in your workflow:
+# - uses: optimizely/feature-flag-sync-action@v1
+#   with:
+#     config-file: '.github/optimizely-sync.yml'
+#     # ... other configuration
