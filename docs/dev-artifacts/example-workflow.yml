@@ -9,6 +9,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Weekly scheduled cleanup (Monday 6 AM UTC)
+  # To change schedule, adjust the cron expression below.
+  schedule:
+    - cron: '0 6 * * 1'
   workflow_dispatch:
     inputs:
       operation:
@@ -41,6 +45,7 @@ jobs:
           project-id: ${{ secrets.OPTIMIZELY_PROJECT_ID }}
           scan-paths: 'src,lib,components'
           languages: 'typescript,javascript'
+          # Default to cleanup/dry-run when triggered by schedule (no inputs present)
           dry-run: ${{ github.event.inputs.dry_run || 'true' }}
           operation: ${{ github.event.inputs.operation || 'cleanup' }}
       
@@ -62,6 +67,35 @@ jobs:
             // This is just a placeholder for additional custom logic
             console.log('Flag sync completed for PR #${{ github.event.number }}')
 
+      - name: Create Issue on Failure (Scheduled Run)
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = `Weekly Flag Cleanup failed - Run #${{ github.run_number }}`;
+            const body = [
+              'The scheduled weekly flag cleanup failed.',
+              '',
+              `- Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+              `- Commit: ${{ github.sha }}`,
+              `- Ref: ${{ github.ref }}`,
+              '',
+              'Please investigate logs and the uploaded reports artifacts.'
+            ].join('\n');
+            try {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['bug', 'automated', 'flag-sync']
+              });
+              core.info('Opened failure issue for scheduled run.');
+            } catch (e) {
+              core.warning('Failed to create issue: ' + e.message);
+            }
+
       - name: Job Summary
         if: always()
         run: |
@@ -71,3 +105,6 @@ jobs:
           echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Run ID**: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "- **Schedule**: Monday 06:00 UTC (cron: '0 6 * * 1')" >> $GITHUB_STEP_SUMMARY
+          fi
