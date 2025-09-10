@@ -126,11 +126,110 @@ export interface GitHubActionsConfig {
 }
 
 /**
+ * Manual override configuration for flag cleanup operations.
+ */
+export interface OverrideConfig {
+  version: string;
+  description: string;
+  organizationId: string;
+  overrideConfig: {
+    exclusionLists: {
+      permanentExclusions: ExclusionRule[];
+      temporaryExclusions: ExclusionRule[];
+      patternExclusions: PatternExclusionRule[];
+    };
+    approvalWorkflows: {
+      criticalFlagThresholds: {
+        ageInDays: number;
+        usageThreshold: number;
+        riskLevel: string;
+      };
+      approvalRequired: ApprovalRule[];
+      emergencyBypass: {
+        enabled: boolean;
+        bypassUsers: string[];
+        auditRequired: boolean;
+        postBypassActions: string[];
+      };
+    };
+    emergencyControls: {
+      stopWords: string[];
+      rollbackConfig: {
+        maxRollbackWindow: string;
+        requiresApproval: boolean;
+        autoRollbackTriggers: string[];
+        rollbackNotifications: string[];
+      };
+    };
+  };
+  validation: {
+    schemaVersion: string;
+    requiredFields: string[];
+    maxExclusionAge: string;
+    allowedTags: string[];
+  };
+  metadata: {
+    createdBy: string;
+    createdAt: string;
+    version: string;
+    lastUpdated: string;
+    updatedBy: string;
+    repository: string;
+    branch: string;
+    configPath?: string;
+  };
+}
+
+/**
+ * Flag exclusion rule for manual overrides.
+ */
+export interface ExclusionRule {
+  flagKey: string;
+  reason: string;
+  addedBy: string;
+  addedAt: string;
+  expiresAt?: string | null;
+  tags: string[];
+  isPattern?: boolean;
+}
+
+/**
+ * Pattern-based exclusion rule.
+ */
+export interface PatternExclusionRule {
+  pattern: string;
+  reason: string;
+  addedBy: string;
+  addedAt: string;
+  expiresAt?: string | null;
+  tags: string[];
+}
+
+/**
+ * Approval workflow rule for critical flags.
+ */
+export interface ApprovalRule {
+  flagKey: string;
+  approvalType: "manual" | "automated";
+  approvers: string[];
+  requiresAllApprovers: boolean;
+  reason: string;
+  tags: string[];
+}
+
+/**
+ * Configuration for flag synchronization operations with overrides.
+ */
+export interface FlagSyncConfigWithOverrides extends FlagSyncConfig {
+  overrides?: OverrideConfig;
+}
+
+/**
  * Complete runtime configuration combining all config sources.
  */
 export interface RuntimeConfig {
   environment: EnvironmentConfig;
-  flagSync: FlagSyncConfig;
+  flagSync: FlagSyncConfigWithOverrides;
   github?: GitHubActionsConfig;
   metadata: {
     version: string;

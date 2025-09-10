@@ -27,6 +27,8 @@ import {
 } from "../types/sync.ts";
 import * as logger from "../utils/logger.ts";
 import { Result } from "../utils/try-catch.ts";
+import { overrideConfigManager } from "../utils/override-config-manager.ts";
+import { approvalWorkflowManager } from "../utils/approval-workflow-manager.ts";
 
 /**
  * Configuration options for the flag sync core
@@ -1090,6 +1092,26 @@ export class FlagSyncCore {
         }
         if (anyRules) {
           skippedReasons[key] = "targeting_rules_present";
+          continue;
+        }
+
+        // Manual override exclusions
+        if (await overrideConfigManager.isExcluded(key)) {
+          skippedReasons[key] = "manual_exclusion";
+          continue;
+        }
+
+        // Manual approval workflow check
+        const approval = await approvalWorkflowManager.checkAndRequestApproval(
+          key,
+          Deno.env.get("GITHUB_ACTOR") || "flag-sync-action",
+          {
+            reason: "Manual approval required by override configuration",
+            riskLevel: "high",
+          },
+        );
+        if (approval.requiresApproval && !approval.canProceed) {
+          skippedReasons[key] = "approval_required";
           continue;
         }
 

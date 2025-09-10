@@ -3,7 +3,7 @@
  * Provides comprehensive validation functions for environment variables, API tokens, and configuration.
  */
 
-import { EnvironmentConfig, OperationType, ValidationResult } from "../types/config.ts";
+import { EnvironmentConfig, ValidationResult } from "../types/config.ts";
 
 /**
  * Validates that the API path is a non-empty string and starts with '/'.
@@ -30,33 +30,37 @@ export function validateInputs(inputs: {
   optimizelyProjectId?: string;
 }): void {
   // Validate operation
-  const validOperations: OperationType[] = ["cleanup", "audit"];
-  if (!validOperations.includes(inputs.operation as OperationType)) {
+  const validOperations = ["cleanup", "audit", "emergency-stop", "clear-emergency", "rollback"];
+  if (!validOperations.includes(inputs.operation)) {
     throw new Error(`Operation must be one of: ${validOperations.join(", ")}`);
   }
 
-  // Validate required Optimizely credentials
-  if (
-    !inputs.optimizelyApiToken || typeof inputs.optimizelyApiToken !== "string"
-  ) {
-    throw new Error("OPTIMIZELY_API_TOKEN environment variable is required");
-  }
+  // Skip Optimizely credential validation for emergency operations
+  const emergencyOperations = ["emergency-stop", "clear-emergency", "rollback"];
+  if (!emergencyOperations.includes(inputs.operation)) {
+    // Validate required Optimizely credentials
+    if (
+      !inputs.optimizelyApiToken || typeof inputs.optimizelyApiToken !== "string"
+    ) {
+      throw new Error("OPTIMIZELY_API_TOKEN environment variable is required");
+    }
 
-  if (
-    !inputs.optimizelyProjectId ||
-    typeof inputs.optimizelyProjectId !== "string"
-  ) {
-    throw new Error("OPTIMIZELY_PROJECT_ID environment variable is required");
-  }
+    if (
+      !inputs.optimizelyProjectId ||
+      typeof inputs.optimizelyProjectId !== "string"
+    ) {
+      throw new Error("OPTIMIZELY_PROJECT_ID environment variable is required");
+    }
 
-  // Enhanced API token validation
-  if (!validateOptimizelyApiToken(inputs.optimizelyApiToken)) {
-    throw new Error("OPTIMIZELY_API_TOKEN appears to be invalid format");
-  }
+    // Enhanced API token validation
+    if (!validateOptimizelyApiToken(inputs.optimizelyApiToken)) {
+      throw new Error("OPTIMIZELY_API_TOKEN appears to be invalid format");
+    }
 
-  // Enhanced project ID validation
-  if (!validateOptimizelyProjectId(inputs.optimizelyProjectId)) {
-    throw new Error("OPTIMIZELY_PROJECT_ID must be a numeric string");
+    // Enhanced project ID validation
+    if (!validateOptimizelyProjectId(inputs.optimizelyProjectId)) {
+      throw new Error("OPTIMIZELY_PROJECT_ID must be a numeric string");
+    }
   }
 
   // Validate environment if provided
@@ -162,8 +166,8 @@ export function validateEnvironmentConfig(config: EnvironmentConfig): Validation
   }
 
   // Validate operation
-  const validOperations: OperationType[] = ["cleanup", "audit"];
-  if (!validOperations.includes(config.OPERATION)) {
+  const validOperations = ["cleanup", "audit", "emergency-stop", "clear-emergency", "rollback"];
+  if (!validOperations.includes(config.OPERATION as string)) {
     errors.push(
       `Invalid OPERATION: ${config.OPERATION}. Must be one of: ${validOperations.join(", ")}`,
     );
