@@ -146,27 +146,35 @@ export class CircuitBreaker<T> {
       }, this.timeoutMs);
     });
 
-    const operation = fn().then(
-      (result) => {
+    // Wrap the operation to handle both sync and async errors
+    const operation = new Promise<T>((resolve, reject) => {
+      try {
+        const result = fn();
+        result.then(
+          (value) => {
+            if (!isResolved) {
+              isResolved = true;
+              clearTimeout(timeoutId);
+              resolve(value);
+            }
+          },
+          (error) => {
+            if (!isResolved) {
+              isResolved = true;
+              clearTimeout(timeoutId);
+              reject(error);
+            }
+          },
+        );
+      } catch (error) {
+        // Handle synchronous errors
         if (!isResolved) {
           isResolved = true;
           clearTimeout(timeoutId);
-          return result;
+          reject(error);
         }
-        // If already resolved by timeout, return a promise that never resolves
-        // This prevents the result from being processed
-        return new Promise<T>(() => {});
-      },
-      (error) => {
-        if (!isResolved) {
-          isResolved = true;
-          clearTimeout(timeoutId);
-          throw error;
-        }
-        // If already resolved by timeout, return a promise that never resolves
-        return new Promise<T>(() => {});
-      },
-    );
+      }
+    });
 
     return Promise.race([operation, timeoutPromise]);
   }
