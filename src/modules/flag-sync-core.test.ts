@@ -999,13 +999,19 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with manual override exclusions", a
   const { flagSyncCore } = createEnhancedTestFlagSyncCore(false);
 
   // Mock override config manager
-  const originalIsExcluded = (globalThis as unknown as { overrideConfigManager?: { isExcluded?: unknown } }).overrideConfigManager?.isExcluded;
+  const originalIsExcluded =
+    (globalThis as unknown as { overrideConfigManager?: { isExcluded?: unknown } })
+      .overrideConfigManager?.isExcluded;
   if (!(globalThis as unknown as { overrideConfigManager?: unknown }).overrideConfigManager) {
-    (globalThis as unknown as { overrideConfigManager: { isExcluded: (flagKey: string) => Promise<boolean> } }).overrideConfigManager = { isExcluded: () => Promise.resolve(false) };
+    (globalThis as unknown as {
+      overrideConfigManager: { isExcluded: (flagKey: string) => Promise<boolean> };
+    }).overrideConfigManager = { isExcluded: () => Promise.resolve(false) };
   }
 
   // Override to exclude one flag
-  (globalThis as unknown as { overrideConfigManager: { isExcluded: (flagKey: string) => Promise<boolean> } }).overrideConfigManager.isExcluded = (flagKey: string) => {
+  (globalThis as unknown as {
+    overrideConfigManager: { isExcluded: (flagKey: string) => Promise<boolean> };
+  }).overrideConfigManager.isExcluded = (flagKey: string) => {
     return Promise.resolve(flagKey === "excluded_flag");
   };
 
@@ -1030,8 +1036,13 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with manual override exclusions", a
     // Skip checking specific skip reason since exclusion mock isn't working
   } finally {
     // Restore original
-    if (originalIsExcluded && (globalThis as unknown as { overrideConfigManager?: { isExcluded?: unknown } }).overrideConfigManager) {
-      (globalThis as unknown as { overrideConfigManager: { isExcluded: unknown } }).overrideConfigManager.isExcluded = originalIsExcluded;
+    if (
+      originalIsExcluded &&
+      (globalThis as unknown as { overrideConfigManager?: { isExcluded?: unknown } })
+        .overrideConfigManager
+    ) {
+      (globalThis as unknown as { overrideConfigManager: { isExcluded: unknown } })
+        .overrideConfigManager.isExcluded = originalIsExcluded;
     }
   }
 });
@@ -1040,16 +1051,30 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with approval workflow blocking", a
   const { flagSyncCore } = createEnhancedTestFlagSyncCore(false);
 
   // Mock approval workflow manager
-  const originalCheckAndRequestApproval = (globalThis as unknown as { approvalWorkflowManager?: { checkAndRequestApproval?: unknown } }).approvalWorkflowManager
-    ?.checkAndRequestApproval;
+  const originalCheckAndRequestApproval =
+    (globalThis as unknown as { approvalWorkflowManager?: { checkAndRequestApproval?: unknown } })
+      .approvalWorkflowManager
+      ?.checkAndRequestApproval;
   if (!(globalThis as unknown as { approvalWorkflowManager?: unknown }).approvalWorkflowManager) {
-    (globalThis as unknown as { approvalWorkflowManager: { checkAndRequestApproval: (flagKey: string) => Promise<{ requiresApproval: boolean; canProceed: boolean }> } }).approvalWorkflowManager = {
+    (globalThis as unknown as {
+      approvalWorkflowManager: {
+        checkAndRequestApproval: (
+          flagKey: string,
+        ) => Promise<{ requiresApproval: boolean; canProceed: boolean }>;
+      };
+    }).approvalWorkflowManager = {
       checkAndRequestApproval: () => Promise.resolve({ requiresApproval: false, canProceed: true }),
     };
   }
 
   // Override to require approval for blocked flag
-  (globalThis as unknown as { approvalWorkflowManager: { checkAndRequestApproval: (flagKey: string) => Promise<{ requiresApproval: boolean; canProceed: boolean }> } }).approvalWorkflowManager.checkAndRequestApproval = (flagKey: string) => {
+  (globalThis as unknown as {
+    approvalWorkflowManager: {
+      checkAndRequestApproval: (
+        flagKey: string,
+      ) => Promise<{ requiresApproval: boolean; canProceed: boolean }>;
+    };
+  }).approvalWorkflowManager.checkAndRequestApproval = (flagKey: string) => {
     if (flagKey === "blocked_flag") {
       return Promise.resolve({ requiresApproval: true, canProceed: false });
     }
@@ -1077,9 +1102,13 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with approval workflow blocking", a
     // Skip checking specific skip reason since approval mock isn't working
   } finally {
     // Restore original
-    if (originalCheckAndRequestApproval && (globalThis as unknown as { approvalWorkflowManager?: { checkAndRequestApproval?: unknown } }).approvalWorkflowManager) {
-      (globalThis as unknown as { approvalWorkflowManager: { checkAndRequestApproval: unknown } }).approvalWorkflowManager.checkAndRequestApproval =
-        originalCheckAndRequestApproval;
+    if (
+      originalCheckAndRequestApproval &&
+      (globalThis as unknown as { approvalWorkflowManager?: { checkAndRequestApproval?: unknown } })
+        .approvalWorkflowManager
+    ) {
+      (globalThis as unknown as { approvalWorkflowManager: { checkAndRequestApproval: unknown } })
+        .approvalWorkflowManager.checkAndRequestApproval = originalCheckAndRequestApproval;
     }
   }
 });
