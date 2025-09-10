@@ -776,9 +776,10 @@ Deno.test("OptimizelyApiClient: request timeout handling", async () => {
 
 Deno.test("OptimizelyApiClient: request handles 403 Forbidden", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response("Forbidden", { status: 403, statusText: "Forbidden" })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Forbidden", { status: 403, statusText: "Forbidden" }),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
@@ -790,9 +791,10 @@ Deno.test("OptimizelyApiClient: request handles 403 Forbidden", async () => {
 
 Deno.test("OptimizelyApiClient: request handles 404 Not Found", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response("Not Found", { status: 404, statusText: "Not Found" })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Not Found", { status: 404, statusText: "Not Found" }),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/nonexistent");
@@ -804,9 +806,10 @@ Deno.test("OptimizelyApiClient: request handles 404 Not Found", async () => {
 
 Deno.test("OptimizelyApiClient: request handles 429 Rate Limit", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response("Too Many Requests", { status: 429, statusText: "Too Many Requests" })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Too Many Requests", { status: 429, statusText: "Too Many Requests" }),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
@@ -818,9 +821,10 @@ Deno.test("OptimizelyApiClient: request handles 429 Rate Limit", async () => {
 
 Deno.test("OptimizelyApiClient: request handles 500 Server Error", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response("Internal Server Error", { status: 500, statusText: "Internal Server Error" })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Internal Server Error", { status: 500, statusText: "Internal Server Error" }),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
@@ -838,13 +842,13 @@ Deno.test("OptimizelyApiClient: request with custom headers", async () => {
         requestHeaders = new Headers(init.headers);
       }
       return Promise.resolve(
-        new Response(JSON.stringify({ data: "test" }), { status: 200 })
+        new Response(JSON.stringify({ data: "test" }), { status: 200 }),
       );
     };
 
     const client = new OptimizelyApiClient("test-token");
     await client.request("/test", {
-      headers: { "X-Custom-Header": "custom-value" }
+      headers: { "X-Custom-Header": "custom-value" },
     });
 
     assert(requestHeaders);
@@ -857,12 +861,13 @@ Deno.test("OptimizelyApiClient: request with custom headers", async () => {
 
 Deno.test("OptimizelyApiClient: unarchiveFeatureFlag success", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response(JSON.stringify({ "test-flag": { key: "test-flag", archived: false } }), {
-        status: 200,
-        statusText: "OK"
-      })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ "test-flag": { key: "test-flag", archived: false } }), {
+          status: 200,
+          statusText: "OK",
+        }),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.unarchiveFeatureFlag("test-flag");
@@ -883,12 +888,16 @@ Deno.test("OptimizelyApiClient: unarchiveFeatureFlag with invalid flag key", asy
 
 Deno.test("OptimizelyApiClient: unarchiveFeatureFlags bulk operation", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response(JSON.stringify({
-        flag_1: { key: "flag_1", archived: false },
-        flag_2: { key: "flag_2", archived: false }
-      }), { status: 200 })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            flag_1: { key: "flag_1", archived: false },
+            flag_2: { key: "flag_2", archived: false },
+          }),
+          { status: 200 },
+        ),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.unarchiveFeatureFlags(["flag_1", "flag_2"]);
@@ -901,11 +910,12 @@ Deno.test("OptimizelyApiClient: unarchiveFeatureFlags bulk operation", async () 
 Deno.test("OptimizelyApiClient: getAllFeatureFlags with error recovery fallback", async () => {
   await withTestEnvironment(testEnvVars, async () => {
     const client = new OptimizelyApiClient("test-token", { enableGracefulDegradation: true });
-    
+
     // Mock getAllFeatureFlags to fail
-    globalThis.fetch = () => Promise.resolve(
-      new Response("Service Unavailable", { status: 503 })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Service Unavailable", { status: 503 }),
+      );
 
     const result = await client.getAllFeatureFlagsWithRecovery();
     // Should handle error gracefully
@@ -916,11 +926,15 @@ Deno.test("OptimizelyApiClient: getAllFeatureFlags with error recovery fallback"
 
 Deno.test("OptimizelyApiClient: archiveFeatureFlagsWithRecovery", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response(JSON.stringify({
-        "test-flag": { key: "test-flag", archived: true }
-      }), { status: 200 })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            "test-flag": { key: "test-flag", archived: true },
+          }),
+          { status: 200 },
+        ),
+      );
 
     const client = new OptimizelyApiClient("test-token", { enableGracefulDegradation: true });
     const result = await client.archiveFeatureFlagsWithRecovery(["test-flag"]);
@@ -932,12 +946,13 @@ Deno.test("OptimizelyApiClient: archiveFeatureFlagsWithRecovery", async () => {
 
 Deno.test("OptimizelyApiClient: performHealthCheck success", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response(JSON.stringify({ status: "ok" }), { 
-        status: 200,
-        statusText: "OK" 
-      })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          statusText: "OK",
+        }),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.performHealthCheck();
@@ -948,9 +963,10 @@ Deno.test("OptimizelyApiClient: performHealthCheck success", async () => {
 
 Deno.test("OptimizelyApiClient: performHealthCheck failure", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response("Service Unavailable", { status: 503 })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Service Unavailable", { status: 503 }),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.performHealthCheck();
@@ -965,9 +981,9 @@ Deno.test("OptimizelyApiClient: constructor with custom options", () => {
     maxRps: 10,
     maxRetries: 5,
     timeoutMs: 45000,
-    enableGracefulDegradation: false
+    enableGracefulDegradation: false,
   });
-  
+
   assert(client instanceof OptimizelyApiClient);
 });
 
@@ -977,7 +993,7 @@ Deno.test("OptimizelyApiClient: constructor with minimum values", () => {
     maxRetries: -1, // Should be clamped to 0
     timeoutMs: 500, // Should be clamped to 1000
   });
-  
+
   assert(client instanceof OptimizelyApiClient);
 });
 
@@ -989,18 +1005,18 @@ Deno.test("OptimizelyApiClient: validateTokenAccess caches result", async () => 
       return Promise.resolve(
         new Response(JSON.stringify({ id: "123", name: "Test Project" }), {
           status: 200,
-          statusText: "OK"
-        })
+          statusText: "OK",
+        }),
       );
     };
 
     const client = new OptimizelyApiClient("valid-test-token-12345");
-    
+
     // First call should make API request
     const result1 = await client.validateTokenAccess();
     assertEquals(result1.data, true);
     assertEquals(callCount, 1);
-    
+
     // Second call should use cached result
     const result2 = await client.validateTokenAccess();
     assertEquals(result2.data, true);
@@ -1030,9 +1046,10 @@ Deno.test("OptimizelyApiClient: unarchiveFeatureFlags validates flag keys", asyn
 
 Deno.test("OptimizelyApiClient: request handles malformed JSON response", async () => {
   await withTestEnvironment(testEnvVars, async () => {
-    globalThis.fetch = () => Promise.resolve(
-      new Response("{ invalid json }", { status: 200 })
-    );
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("{ invalid json }", { status: 200 }),
+      );
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
@@ -1044,7 +1061,7 @@ Deno.test("OptimizelyApiClient: request handles malformed JSON response", async 
 Deno.test("OptimizelyApiClient: executeWithRecovery method", async () => {
   await withTestEnvironment(testEnvVars, async () => {
     const client = new OptimizelyApiClient("test-token");
-    
+
     const operation = () => {
       return Promise.resolve("success");
     };
@@ -1059,19 +1076,19 @@ Deno.test("OptimizelyApiClient: getFlagStatusAcrossEnvironments with empty envir
   await withTestEnvironment(testEnvVars, async () => {
     globalThis.fetch = (url: string | URL | Request) => {
       const urlStr = url.toString();
-      
+
       if (urlStr.includes("/environments")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ items: [] }), { status: 200 })
+          new Response(JSON.stringify({ items: [] }), { status: 200 }),
         );
       }
-      
+
       return Promise.resolve(new Response("Not Found", { status: 404 }));
     };
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.getFlagStatusAcrossEnvironments("test_flag");
-    
+
     assertEquals(result.error, null);
     assert(result.data);
     assertEquals(Object.keys(result.data).length, 0);
@@ -1082,19 +1099,19 @@ Deno.test("OptimizelyApiClient: validateFlagConsistency with empty environments"
   await withTestEnvironment(testEnvVars, async () => {
     globalThis.fetch = (url: string | URL | Request) => {
       const urlStr = url.toString();
-      
+
       if (urlStr.includes("/environments")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ items: [] }), { status: 200 })
+          new Response(JSON.stringify({ items: [] }), { status: 200 }),
         );
       }
-      
+
       return Promise.resolve(new Response("Not Found", { status: 404 }));
     };
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.validateFlagConsistency("test_flag");
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
     assert(result.error.message.includes("No environment data found for flag test_flag"));

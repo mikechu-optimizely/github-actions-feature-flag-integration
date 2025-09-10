@@ -1,10 +1,10 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   ApiFallbackManager,
-  FallbackStrategy,
   createDefaultFallbackConfig,
   createFeatureFlagFallbackConfig,
   type FallbackConfig,
+  FallbackStrategy,
 } from "./api-fallback.ts";
 
 interface TestData {
@@ -19,7 +19,7 @@ Deno.test("ApiFallbackManager - constructor", () => {
 Deno.test("ApiFallbackManager - executeWithFallback - successful primary operation", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const testData = { message: "success" };
-  
+
   const primaryOperation = () => Promise.resolve(testData);
   const config: FallbackConfig<typeof testData> = {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
@@ -36,15 +36,15 @@ Deno.test("ApiFallbackManager - executeWithFallback - successful primary operati
 Deno.test("ApiFallbackManager - executeWithFallback - primary fails, use cached data", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const cachedData = { message: "cached" };
-  
+
   // First, populate cache with successful operation
   const successfulOperation = () => Promise.resolve(cachedData);
   const config: FallbackConfig<typeof cachedData> = {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
   };
-  
+
   await manager.executeWithFallback("test-key", successfulOperation, config);
-  
+
   // Now test with failing primary operation
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
 
@@ -60,9 +60,9 @@ Deno.test("ApiFallbackManager - executeWithFallback - primary fails, use cached 
 Deno.test("ApiFallbackManager - executeWithFallback - use custom cached data provider", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const customCachedData = { message: "custom cache" };
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<typeof customCachedData> = {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
     getCachedData: () => Promise.resolve(customCachedData),
@@ -79,9 +79,9 @@ Deno.test("ApiFallbackManager - executeWithFallback - use custom cached data pro
 Deno.test("ApiFallbackManager - executeWithFallback - use default values fallback", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const defaultData = { message: "default" };
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<typeof defaultData> = {
     primaryStrategy: FallbackStrategy.DEFAULT_VALUES,
     getDefaultValues: () => Promise.resolve(defaultData),
@@ -98,9 +98,9 @@ Deno.test("ApiFallbackManager - executeWithFallback - use default values fallbac
 Deno.test("ApiFallbackManager - executeWithFallback - use offline mode fallback", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const offlineData = { message: "offline" };
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<typeof offlineData> = {
     primaryStrategy: FallbackStrategy.OFFLINE_MODE,
     getOfflineData: () => Promise.resolve(offlineData),
@@ -117,9 +117,9 @@ Deno.test("ApiFallbackManager - executeWithFallback - use offline mode fallback"
 Deno.test("ApiFallbackManager - executeWithFallback - use degraded functionality", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const degradedData = { message: "degraded" };
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<typeof degradedData> = {
     primaryStrategy: FallbackStrategy.DEGRADED_FUNCTIONALITY,
     enableGracefulDegradation: true,
@@ -136,9 +136,9 @@ Deno.test("ApiFallbackManager - executeWithFallback - use degraded functionality
 
 Deno.test("ApiFallbackManager - executeWithFallback - fail fast strategy", async () => {
   const manager = new ApiFallbackManager("test-manager");
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<TestData> = {
     primaryStrategy: FallbackStrategy.FAIL_FAST,
   };
@@ -155,9 +155,9 @@ Deno.test("ApiFallbackManager - executeWithFallback - fail fast strategy", async
 Deno.test("ApiFallbackManager - executeWithFallback - multiple fallback strategies", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const defaultData = { message: "default" };
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<typeof defaultData> = {
     primaryStrategy: FallbackStrategy.CACHED_DATA, // Will fail - no cache
     fallbackStrategies: [FallbackStrategy.DEFAULT_VALUES],
@@ -174,9 +174,9 @@ Deno.test("ApiFallbackManager - executeWithFallback - multiple fallback strategi
 
 Deno.test("ApiFallbackManager - executeWithFallback - all strategies fail", async () => {
   const manager = new ApiFallbackManager("test-manager");
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<TestData> = {
     primaryStrategy: FallbackStrategy.CACHED_DATA, // No cache available
     fallbackStrategies: [FallbackStrategy.DEFAULT_VALUES], // No provider
@@ -194,17 +194,17 @@ Deno.test("ApiFallbackManager - executeWithFallback - all strategies fail", asyn
 Deno.test("ApiFallbackManager - cache age validation", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const cachedData = { message: "cached" };
-  
+
   // First, populate cache
   await manager.executeWithFallback("test-key", () => Promise.resolve(cachedData), {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
   });
-  
+
   // Wait a small amount to simulate age
-  await new Promise(resolve => setTimeout(resolve, 10));
-  
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<typeof cachedData> = {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
     maxCacheAgeMs: 5, // Very short age
@@ -221,17 +221,17 @@ Deno.test("ApiFallbackManager - cache age validation", async () => {
 Deno.test("ApiFallbackManager - cache age validation without graceful degradation", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const cachedData = { message: "cached" };
-  
+
   // First, populate cache
   await manager.executeWithFallback("test-key", () => Promise.resolve(cachedData), {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
   });
-  
+
   // Wait to simulate age
-  await new Promise(resolve => setTimeout(resolve, 10));
-  
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<typeof cachedData> = {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
     maxCacheAgeMs: 5, // Very short age
@@ -248,9 +248,9 @@ Deno.test("ApiFallbackManager - cache age validation without graceful degradatio
 Deno.test("ApiFallbackManager - onFallbackError callback", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const errors: Array<{ error: Error; strategy: FallbackStrategy }> = [];
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const config: FallbackConfig<TestData> = {
     primaryStrategy: FallbackStrategy.CACHED_DATA, // Will fail
     onFallbackError: (error, strategy) => {
@@ -267,23 +267,31 @@ Deno.test("ApiFallbackManager - onFallbackError callback", async () => {
 
 Deno.test("ApiFallbackManager - error handling for missing providers", async () => {
   const manager = new ApiFallbackManager("test-manager");
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
 
   // Test DEFAULT_VALUES without provider
   const defaultConfig: FallbackConfig<TestData> = {
     primaryStrategy: FallbackStrategy.DEFAULT_VALUES,
   };
-  
-  const defaultResult = await manager.executeWithFallback("test-key", failingOperation, defaultConfig);
+
+  const defaultResult = await manager.executeWithFallback(
+    "test-key",
+    failingOperation,
+    defaultConfig,
+  );
   assertEquals(defaultResult.data, null);
 
   // Test OFFLINE_MODE without provider
   const offlineConfig: FallbackConfig<TestData> = {
     primaryStrategy: FallbackStrategy.OFFLINE_MODE,
   };
-  
-  const offlineResult = await manager.executeWithFallback("test-key", failingOperation, offlineConfig);
+
+  const offlineResult = await manager.executeWithFallback(
+    "test-key",
+    failingOperation,
+    offlineConfig,
+  );
   assertEquals(offlineResult.data, null);
 
   // Test DEGRADED_FUNCTIONALITY without enableGracefulDegradation
@@ -291,16 +299,20 @@ Deno.test("ApiFallbackManager - error handling for missing providers", async () 
     primaryStrategy: FallbackStrategy.DEGRADED_FUNCTIONALITY,
     enableGracefulDegradation: false,
   };
-  
-  const degradedResult = await manager.executeWithFallback("test-key", failingOperation, degradedConfig);
+
+  const degradedResult = await manager.executeWithFallback(
+    "test-key",
+    failingOperation,
+    degradedConfig,
+  );
   assertEquals(degradedResult.data, null);
 });
 
 Deno.test("ApiFallbackManager - unknown strategy error", async () => {
   const manager = new ApiFallbackManager("test-manager");
-  
+
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   // Use an invalid strategy (cast to bypass TypeScript)
   const config: FallbackConfig<TestData> = {
     primaryStrategy: "UNKNOWN_STRATEGY" as FallbackStrategy,
@@ -314,28 +326,28 @@ Deno.test("ApiFallbackManager - unknown strategy error", async () => {
 Deno.test("ApiFallbackManager - clearCacheEntry", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const testData = { message: "test" };
-  
+
   // Populate cache
   await manager.executeWithFallback("test-key", () => Promise.resolve(testData), {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
   });
-  
+
   // Clear specific entry
   manager.clearCacheEntry("test-key");
-  
+
   // Try to use cache - should fail
   const failingOperation = () => Promise.reject(new Error("Primary operation failed"));
-  
+
   const result = await manager.executeWithFallback("test-key", failingOperation, {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
   });
-  
+
   assertEquals(result.data, null);
 });
 
 Deno.test("ApiFallbackManager - clearCacheEntry for non-existent key", () => {
   const manager = new ApiFallbackManager("test-manager");
-  
+
   // Should not throw error
   manager.clearCacheEntry("non-existent-key");
 });
@@ -343,7 +355,7 @@ Deno.test("ApiFallbackManager - clearCacheEntry for non-existent key", () => {
 Deno.test("ApiFallbackManager - clearAllCache", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const testData = { message: "test" };
-  
+
   // Populate cache with multiple entries
   await manager.executeWithFallback("key1", () => Promise.resolve(testData), {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
@@ -351,10 +363,10 @@ Deno.test("ApiFallbackManager - clearAllCache", async () => {
   await manager.executeWithFallback("key2", () => Promise.resolve(testData), {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
   });
-  
+
   // Clear all cache
   manager.clearAllCache();
-  
+
   // Verify cache is empty
   const stats = manager.getCacheStats();
   assertEquals(stats.totalEntries, 0);
@@ -362,9 +374,9 @@ Deno.test("ApiFallbackManager - clearAllCache", async () => {
 
 Deno.test("ApiFallbackManager - getCacheStats with empty cache", () => {
   const manager = new ApiFallbackManager("test-manager");
-  
+
   const stats = manager.getCacheStats();
-  
+
   assertEquals(stats.totalEntries, 0);
   assertEquals(stats.oldestEntryAge, null);
   assertEquals(stats.newestEntryAge, null);
@@ -373,21 +385,21 @@ Deno.test("ApiFallbackManager - getCacheStats with empty cache", () => {
 Deno.test("ApiFallbackManager - getCacheStats with entries", async () => {
   const manager = new ApiFallbackManager("test-manager");
   const testData = { message: "test" };
-  
+
   // Add some cache entries
   await manager.executeWithFallback("key1", () => Promise.resolve(testData), {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
   });
-  
+
   // Small delay
-  await new Promise(resolve => setTimeout(resolve, 10));
-  
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
   await manager.executeWithFallback("key2", () => Promise.resolve(testData), {
     primaryStrategy: FallbackStrategy.CACHED_DATA,
   });
-  
+
   const stats = manager.getCacheStats();
-  
+
   assertEquals(stats.totalEntries, 2);
   assertEquals(typeof stats.oldestEntryAge, "number");
   assertEquals(typeof stats.newestEntryAge, "number");
@@ -396,7 +408,7 @@ Deno.test("ApiFallbackManager - getCacheStats with entries", async () => {
 
 Deno.test("createDefaultFallbackConfig - with defaults", () => {
   const config = createDefaultFallbackConfig();
-  
+
   assertEquals(config.primaryStrategy, FallbackStrategy.CACHED_DATA);
   assertEquals(config.fallbackStrategies, [
     FallbackStrategy.DEFAULT_VALUES,
@@ -412,7 +424,7 @@ Deno.test("createDefaultFallbackConfig - with custom options", () => {
     maxCacheAgeMs: 60000,
     enableGracefulDegradation: false,
   });
-  
+
   assertEquals(customConfig.primaryStrategy, FallbackStrategy.DEFAULT_VALUES);
   assertEquals(customConfig.maxCacheAgeMs, 60000);
   assertEquals(customConfig.enableGracefulDegradation, false);
@@ -426,14 +438,14 @@ Deno.test("createDefaultFallbackConfig - with custom options", () => {
 Deno.test("createFeatureFlagFallbackConfig - with default flags", async () => {
   const defaultFlags = { feature1: true, feature2: false };
   const config = createFeatureFlagFallbackConfig(defaultFlags);
-  
+
   assertEquals(config.primaryStrategy, FallbackStrategy.CACHED_DATA);
   assertEquals(config.enableGracefulDegradation, true);
-  
+
   // Test default values provider
   const defaultValues = await config.getDefaultValues!();
   assertEquals(defaultValues, defaultFlags);
-  
+
   // Test offline data provider (should disable all flags)
   const offlineData = await config.getOfflineData!();
   assertEquals(offlineData, { feature1: false, feature2: false });
@@ -441,11 +453,11 @@ Deno.test("createFeatureFlagFallbackConfig - with default flags", async () => {
 
 Deno.test("createFeatureFlagFallbackConfig - with empty flags", async () => {
   const config = createFeatureFlagFallbackConfig();
-  
+
   // Test with empty default flags
   const defaultValues = await config.getDefaultValues!();
   assertEquals(defaultValues, {});
-  
+
   const offlineData = await config.getOfflineData!();
   assertEquals(offlineData, {});
 });

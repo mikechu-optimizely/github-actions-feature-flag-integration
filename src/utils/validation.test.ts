@@ -222,13 +222,20 @@ Deno.test("validateFlagKeys: accepts valid flag key arrays", () => {
 Deno.test("validateFlagKeys: throws on invalid inputs", () => {
   // @ts-expect-error: Testing non-array input
   assertThrows(() => validateFlagKeys("not-array"), Error, "Flag keys must be an array");
-  
+
   assertThrows(() => validateFlagKeys(["valid", ""]), Error, "Flag key must be a non-empty string");
-  
-  assertThrows(() => validateFlagKeys(["valid", "a"]), Error, "Flag key must be at least 2 characters long");
-  
-  assertThrows(() => validateFlagKeys(["valid", "invalid spaces"]), Error, 
-    "Flag key must contain only alphanumeric characters, underscores, and hyphens");
+
+  assertThrows(
+    () => validateFlagKeys(["valid", "a"]),
+    Error,
+    "Flag key must be at least 2 characters long",
+  );
+
+  assertThrows(
+    () => validateFlagKeys(["valid", "invalid spaces"]),
+    Error,
+    "Flag key must contain only alphanumeric characters, underscores, and hyphens",
+  );
 });
 
 // validateFilePath tests
@@ -240,19 +247,28 @@ Deno.test("validateFilePath: accepts valid file paths", () => {
 
 Deno.test("validateFilePath: throws on invalid file paths", () => {
   assertThrows(() => validateFilePath(""), Error, "File path must be a non-empty string");
-  
+
   // @ts-expect-error: Testing non-string input
   assertThrows(() => validateFilePath(null), Error, "File path must be a non-empty string");
-  
-  assertThrows(() => validateFilePath("../secret.txt"), Error, 
-    "File path cannot contain '..' for security reasons");
-  
-  assertThrows(() => validateFilePath("path/to/../secret.txt"), Error, 
-    "File path cannot contain '..' for security reasons");
-  
+
+  assertThrows(
+    () => validateFilePath("../secret.txt"),
+    Error,
+    "File path cannot contain '..' for security reasons",
+  );
+
+  assertThrows(
+    () => validateFilePath("path/to/../secret.txt"),
+    Error,
+    "File path cannot contain '..' for security reasons",
+  );
+
   const longPath = "a".repeat(1001);
-  assertThrows(() => validateFilePath(longPath), Error, 
-    "File path is too long (maximum 1000 characters)");
+  assertThrows(
+    () => validateFilePath(longPath),
+    Error,
+    "File path is too long (maximum 1000 characters)",
+  );
 });
 
 // validateInputs additional tests
@@ -266,35 +282,55 @@ Deno.test("validateInputs: validates environment parameter", () => {
 });
 
 Deno.test("validateInputs: throws on invalid environment", () => {
-  assertThrows(() => validateInputs({
-    operation: "audit",
-    optimizelyApiToken: "valid_token_123456",
-    optimizelyProjectId: "12345",
-    environment: "invalid environment",
-  }), Error, "Invalid environment name format");
+  assertThrows(
+    () =>
+      validateInputs({
+        operation: "audit",
+        optimizelyApiToken: "valid_token_123456",
+        optimizelyProjectId: "12345",
+        environment: "invalid environment",
+      }),
+    Error,
+    "Invalid environment name format",
+  );
 });
 
 Deno.test("validateInputs: throws on missing project ID", () => {
-  assertThrows(() => validateInputs({
-    operation: "audit",
-    optimizelyApiToken: "valid_token_123456",
-  }), Error, "OPTIMIZELY_PROJECT_ID environment variable is required");
+  assertThrows(
+    () =>
+      validateInputs({
+        operation: "audit",
+        optimizelyApiToken: "valid_token_123456",
+      }),
+    Error,
+    "OPTIMIZELY_PROJECT_ID environment variable is required",
+  );
 });
 
 Deno.test("validateInputs: throws on invalid API token format", () => {
-  assertThrows(() => validateInputs({
-    operation: "audit",
-    optimizelyApiToken: "short",
-    optimizelyProjectId: "12345",
-  }), Error, "OPTIMIZELY_API_TOKEN appears to be invalid format");
+  assertThrows(
+    () =>
+      validateInputs({
+        operation: "audit",
+        optimizelyApiToken: "short",
+        optimizelyProjectId: "12345",
+      }),
+    Error,
+    "OPTIMIZELY_API_TOKEN appears to be invalid format",
+  );
 });
 
 Deno.test("validateInputs: throws on invalid project ID format", () => {
-  assertThrows(() => validateInputs({
-    operation: "audit",
-    optimizelyApiToken: "valid_token_123456",
-    optimizelyProjectId: "abc123",
-  }), Error, "OPTIMIZELY_PROJECT_ID must be a numeric string");
+  assertThrows(
+    () =>
+      validateInputs({
+        operation: "audit",
+        optimizelyApiToken: "valid_token_123456",
+        optimizelyProjectId: "abc123",
+      }),
+    Error,
+    "OPTIMIZELY_PROJECT_ID must be a numeric string",
+  );
 });
 
 // validateEnvironmentConfig tests
@@ -333,8 +369,8 @@ Deno.test("validateEnvironmentConfig: detects missing required fields", () => {
 
   const result = validateEnvironmentConfig(invalidConfig);
   assertEquals(result.isValid, false);
-  assert(result.errors.some(e => e.includes("Missing OPTIMIZELY_API_TOKEN")));
-  assert(result.errors.some(e => e.includes("Missing OPTIMIZELY_PROJECT_ID")));
+  assert(result.errors.some((e) => e.includes("Missing OPTIMIZELY_API_TOKEN")));
+  assert(result.errors.some((e) => e.includes("Missing OPTIMIZELY_PROJECT_ID")));
 });
 
 Deno.test("validateEnvironmentConfig: detects invalid field formats", () => {
@@ -354,15 +390,15 @@ Deno.test("validateEnvironmentConfig: detects invalid field formats", () => {
 
   const result = validateEnvironmentConfig(invalidConfig);
   assertEquals(result.isValid, false);
-  assert(result.errors.some(e => e.includes("Invalid OPTIMIZELY_API_TOKEN format")));
-  assert(result.errors.some(e => e.includes("Invalid OPTIMIZELY_PROJECT_ID format")));
-  assert(result.errors.some(e => e.includes("Invalid OPERATION")));
-  assert(result.errors.some(e => e.includes("API_RATE_LIMIT must be between 1 and 100")));
-  assert(result.errors.some(e => e.includes("API_TIMEOUT must be between 1000ms and 300000ms")));
-  assert(result.errors.some(e => e.includes("MAX_RETRIES must be between 0 and 10")));
-  assert(result.errors.some(e => e.includes("CONCURRENCY_LIMIT must be between 1 and 20")));
-  assert(result.errors.some(e => e.includes("Invalid REPORTS_PATH format")));
-  assert(result.errors.some(e => e.includes("Invalid LOG_LEVEL")));
+  assert(result.errors.some((e) => e.includes("Invalid OPTIMIZELY_API_TOKEN format")));
+  assert(result.errors.some((e) => e.includes("Invalid OPTIMIZELY_PROJECT_ID format")));
+  assert(result.errors.some((e) => e.includes("Invalid OPERATION")));
+  assert(result.errors.some((e) => e.includes("API_RATE_LIMIT must be between 1 and 100")));
+  assert(result.errors.some((e) => e.includes("API_TIMEOUT must be between 1000ms and 300000ms")));
+  assert(result.errors.some((e) => e.includes("MAX_RETRIES must be between 0 and 10")));
+  assert(result.errors.some((e) => e.includes("CONCURRENCY_LIMIT must be between 1 and 20")));
+  assert(result.errors.some((e) => e.includes("Invalid REPORTS_PATH format")));
+  assert(result.errors.some((e) => e.includes("Invalid LOG_LEVEL")));
 });
 
 Deno.test("validateEnvironmentConfig: generates appropriate warnings", () => {
@@ -382,9 +418,13 @@ Deno.test("validateEnvironmentConfig: generates appropriate warnings", () => {
 
   const result = validateEnvironmentConfig(configWithWarnings);
   assertEquals(result.isValid, true);
-  assert(result.warnings.some(w => w.includes("DRY_RUN is enabled for cleanup operation")));
-  assert(result.warnings.some(w => w.includes("High API_RATE_LIMIT may cause rate limiting issues")));
-  assert(result.warnings.some(w => w.includes("High CONCURRENCY_LIMIT may impact system performance")));
+  assert(result.warnings.some((w) => w.includes("DRY_RUN is enabled for cleanup operation")));
+  assert(
+    result.warnings.some((w) => w.includes("High API_RATE_LIMIT may cause rate limiting issues")),
+  );
+  assert(
+    result.warnings.some((w) => w.includes("High CONCURRENCY_LIMIT may impact system performance")),
+  );
 });
 
 Deno.test("validateEnvironmentConfig: handles edge case values", () => {
