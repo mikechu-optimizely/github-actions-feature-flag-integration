@@ -563,7 +563,9 @@ export class PlanPreviewManager {
     const requiresExplicitConfirmation = this.#requiresExplicitConfirmation(plan);
 
     // If confirmation is required but interactive mode is disabled, use timeout method
-    if (this.confirmationOptions.requireConfirmation && !this.confirmationOptions.allowInteractive) {
+    if (
+      this.confirmationOptions.requireConfirmation && !this.confirmationOptions.allowInteractive
+    ) {
       return {
         confirmed: false,
         method: "timeout",
