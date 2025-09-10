@@ -173,6 +173,11 @@ export class PlanPreviewManager {
     preview: PlanPreviewResult,
   ): Promise<Result<ConfirmationResult, Error>> {
     try {
+      // Validate input data
+      if (!preview || !preview.metadata || !plan.operations) {
+        throw new Error("Invalid plan or preview data");
+      }
+
       logger.info("Requesting plan confirmation", {
         planId: plan.id,
         requireConfirmation: this.confirmationOptions.requireConfirmation,
@@ -237,6 +242,11 @@ export class PlanPreviewManager {
     }, Error>
   > {
     try {
+      // Validate input data
+      if (!plan || !plan.operations || !Array.isArray(plan.operations)) {
+        throw new Error("Invalid plan data");
+      }
+
       // Generate preview
       const previewResult = await this.generatePreview(plan);
       if (previewResult.error) {
@@ -551,6 +561,16 @@ export class PlanPreviewManager {
     // For now, we'll simulate based on risk level and configuration
 
     const requiresExplicitConfirmation = this.#requiresExplicitConfirmation(plan);
+
+    // If confirmation is required but interactive mode is disabled, use timeout method
+    if (this.confirmationOptions.requireConfirmation && !this.confirmationOptions.allowInteractive) {
+      return {
+        confirmed: false,
+        method: "timeout",
+        timestamp: new Date().toISOString(),
+        userNotes: "Interactive confirmation disabled - automatic timeout",
+      };
+    }
 
     if (!requiresExplicitConfirmation && preview.isSafeToExecute) {
       return {
