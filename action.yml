@@ -1,0 +1,205 @@
+name: 'Optimizely Feature Flag Sync'
+description: 'Automatically synchronize feature flags between your codebase and Optimizely Feature Experimentation'
+author: 'Optimizely'
+branding:
+  icon: 'flag'
+  color: 'blue'
+
+inputs:
+  optimizely-token:
+    description: 'Optimizely API token for authentication'
+    required: true
+  project-id:
+    description: 'Optimizely project ID'
+    required: true
+  optimizely-sdk-key:
+    description: 'Optimizely SDK key (optional, for additional validation)'
+    required: false
+  operation:
+    description: 'Operation type: cleanup or audit'
+    required: false
+    default: 'cleanup'
+  dry-run:
+    description: 'Run in dry-run mode without making actual changes'
+    required: false
+    default: 'true'
+  scan-paths:
+    description: 'Comma-separated paths to scan for feature flags'
+    required: false
+    default: 'src,lib,components'
+  languages:
+    description: 'Comma-separated list of programming languages to analyze'
+    required: false
+    default: 'typescript,javascript'
+  reports-path:
+    description: 'Path where reports should be generated'
+    required: false
+    default: 'reports'
+
+outputs:
+  flags-processed:
+    description: 'Number of flags processed during the sync'
+    value: ${{ steps.set-outputs.outputs.flags-processed }}
+  flags-archived:
+    description: 'Number of flags archived during cleanup'
+    value: ${{ steps.set-outputs.outputs.flags-archived }}
+  sync-status:
+    description: 'Overall sync status: success, warning, or error'
+    value: ${{ steps.set-outputs.outputs.sync-status }}
+  report-path:
+    description: 'Path to the generated sync report'
+    value: ${{ steps.set-outputs.outputs.report-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Deno
+      uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+    
+    - name: Validate operation input
+      shell: bash
+      run: |
+        if [[ "${{ inputs.operation }}" != "cleanup" && "${{ inputs.operation }}" != "audit" ]]; then
+          echo "::error::Invalid operation '${{ inputs.operation }}'. Must be 'cleanup' or 'audit'."
+          exit 1
+        fi
+        echo "::notice::Running ${{ inputs.operation }} operation in dry-run mode: ${{ inputs.dry-run }}"
+    
+    - name: Create reports directory
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.reports-path }}"
+    
+    - name: Execute cleanup operation
+      if: inputs.operation == 'cleanup'
+      shell: bash
+      run: |
+        deno run --allow-all ${{ github.action_path }}/src/main.ts \
+          --operation="cleanup" \
+          --dry-run="${{ inputs.dry-run }}" \
+          --reports-path="${{ inputs.reports-path }}"
+      env:
+        OPTIMIZELY_API_TOKEN: ${{ inputs.optimizely-token }}
+        OPTIMIZELY_PROJECT_ID: ${{ inputs.project-id }}
+        OPTIMIZELY_SDK_KEY: ${{ inputs.optimizely-sdk-key }}
+        SCAN_PATHS: ${{ inputs.scan-paths }}
+        LANGUAGES: ${{ inputs.languages }}
+        GITHUB_TOKEN: ${{ github.token }}
+        OPERATION: cleanup
+        DRY_RUN: ${{ inputs.dry-run }}
+    
+    - name: Execute audit operation
+      if: inputs.operation == 'audit'
+      shell: bash
+      run: |
+        deno run --allow-all ${{ github.action_path }}/src/main.ts \
+          --operation="audit" \
+          --dry-run="${{ inputs.dry-run }}" \
+          --reports-path="${{ inputs.reports-path }}"
+      env:
+        OPTIMIZELY_API_TOKEN: ${{ inputs.optimizely-token }}
+        OPTIMIZELY_PROJECT_ID: ${{ inputs.project-id }}
+        OPTIMIZELY_SDK_KEY: ${{ inputs.optimizely-sdk-key }}
+        SCAN_PATHS: ${{ inputs.scan-paths }}
+        LANGUAGES: ${{ inputs.languages }}
+        GITHUB_TOKEN: ${{ github.token }}
+        OPERATION: audit
+        DRY_RUN: ${{ inputs.dry-run }}
+    
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ github.token }}
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          const reportPath = path.join('${{ inputs.reports-path }}', 'pr-summary.md');
+          
+          if (fs.existsSync(reportPath)) {
+            const report = fs.readFileSync(reportPath, 'utf8');
+            
+            // Add status badge based on sync results
+            let statusBadge = '';
+            try {
+              const summaryPath = path.join('${{ inputs.reports-path }}', 'compliance-summary.json');
+              if (fs.existsSync(summaryPath)) {
+                const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+                const riskLevel = summary.compliance?.riskLevel || 'UNKNOWN';
+                const badgeColor = riskLevel === 'LOW' ? 'green' : riskLevel === 'MEDIUM' ? 'yellow' : 'red';
+                statusBadge = `![Flag Sync Status](https://img.shields.io/badge/Flag_Sync-${riskLevel}-${badgeColor})`;
+              }
+            } catch (err) {
+              console.log('Could not read compliance summary for badge:', err.message);
+            }
+            
+            const commentBody = statusBadge ? `${statusBadge}\n\n${report}` : report;
+            
+            // Find existing comment to update or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Feature Flag Compliance Report')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+              console.log('Updated existing PR comment');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+              console.log('Created new PR comment');
+            }
+          } else {
+            console.log('No PR summary report found at:', reportPath);
+          }
+    
+    - name: Set outputs
+      id: set-outputs
+      shell: bash
+      run: |
+        # Read results from reports and set outputs
+        if [ -f "${{ inputs.reports-path }}/sync-summary.json" ]; then
+          FLAGS_PROCESSED=$(jq -r '.flagsProcessed // 0' "${{ inputs.reports-path }}/sync-summary.json")
+          FLAGS_ARCHIVED=$(jq -r '.flagsArchived // 0' "${{ inputs.reports-path }}/sync-summary.json")
+          SYNC_STATUS=$(jq -r '.status // "unknown"' "${{ inputs.reports-path }}/sync-summary.json")
+        else
+          FLAGS_PROCESSED=0
+          FLAGS_ARCHIVED=0
+          SYNC_STATUS="unknown"
+        fi
+        
+        echo "flags-processed=${FLAGS_PROCESSED}" >> $GITHUB_OUTPUT
+        echo "flags-archived=${FLAGS_ARCHIVED}" >> $GITHUB_OUTPUT
+        echo "sync-status=${SYNC_STATUS}" >> $GITHUB_OUTPUT
+        echo "report-path=${{ inputs.reports-path }}" >> $GITHUB_OUTPUT
+        
+        echo "::notice::Sync completed - Status: ${SYNC_STATUS}, Processed: ${FLAGS_PROCESSED}, Archived: ${FLAGS_ARCHIVED}"
+    
+    - name: Upload reports as artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: flag-sync-reports-${{ github.run_number }}
+        path: ${{ inputs.reports-path }}/
+        retention-days: 30
+        if-no-files-found: warn
+        include-hidden-files: false
+        compression-level: 6
+        overwrite: false

@@ -3,12 +3,13 @@ import { loadEnvironment } from "./config/environment.ts";
 import { OptimizelyApiClient } from "./modules/optimizely-client.ts";
 import { findFlagUsagesInCodebase } from "./modules/code-analysis.ts";
 import { FlagUsageReporter } from "./modules/flag-usage-reporter.ts";
-import { ComplianceReporter } from "./modules/compliance-reporter.ts";
+import { ComplianceReport, ComplianceReporter } from "./modules/compliance-reporter.ts";
 import { FlagSyncCore } from "./modules/flag-sync-core.ts";
 import { auditReporter } from "./modules/audit-reporter.ts";
 import { debug, error, info } from "./utils/logger.ts";
 import { validateInputs } from "./utils/validation.ts";
 import { OptimizelyFlag } from "./types/optimizely.ts";
+import { FlagUsageReport } from "./modules/flag-usage-reporter.ts";
 
 /**
  * Main configuration interface for the application.
@@ -472,6 +473,13 @@ async function executeCleanupOrchestration(
         consistencyResults,
       );
 
+      // Generate sync summary for action outputs
+      await generateSyncSummary(
+        config,
+        complianceReport,
+        usageReport,
+      );
+
       auditReporter.log({
         timestamp: new Date().toISOString(),
         type: "info",
@@ -723,6 +731,42 @@ async function generateRecoveryReport(
     info(`🔧 Recovery report written to ${recoveryPath}`);
   } catch (err) {
     error(`Failed to write recovery report: ${err}`);
+  }
+}
+
+/**
+ * Generates sync summary JSON file for GitHub Action outputs.
+ */
+async function generateSyncSummary(
+  config: MainConfig,
+  complianceReport: ComplianceReport,
+  usageReport: FlagUsageReport,
+): Promise<void> {
+  const summaryPath = `${config.reportsPath}/sync-summary.json`;
+
+  const syncSummary = {
+    timestamp: new Date().toISOString(),
+    executionId: config.executionId,
+    operation: config.operation,
+    dryRun: config.dryRun,
+    status: complianceReport.compliance.riskLevel === "HIGH" ? "warning" : "success",
+    flagsProcessed: complianceReport.summary.totalFlags || 0,
+    flagsArchived: complianceReport.summary.flagsArchived || 0,
+    flagsUsed: complianceReport.summary.usedFlags || 0,
+    flagsUnused: complianceReport.summary.unusedFlags || 0,
+    usageRate: usageReport.summary.usageRate || 0,
+    riskLevel: complianceReport.compliance.riskLevel,
+    flagDebtScore: complianceReport.compliance.flagDebtScore,
+    recommendations: complianceReport.recommendations.length,
+    issues: complianceReport.compliance.issues.length,
+  };
+
+  try {
+    await Deno.mkdir(config.reportsPath, { recursive: true });
+    await Deno.writeTextFile(summaryPath, JSON.stringify(syncSummary, null, 2));
+    info(`📊 Sync summary written to ${summaryPath}`);
+  } catch (err) {
+    error(`Failed to write sync summary: ${err}`);
   }
 }
 
