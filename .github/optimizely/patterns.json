@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "description": "Optimizely feature flag patterns for this repository - managed under version control in .github/optimizely/",
-  "organizationId": "github-actions-feature-flag-integration",
+  "organizationId": "feature-flag-sync-action",
   "organizationName": "Feature Flag Integration Project",
   "extends": ["default-patterns.json"],
   "customNamingConventions": {
@@ -97,7 +97,7 @@
     "version": "1.0.0",
     "lastUpdated": "2024-01-01T00:00:00Z",
     "updatedBy": "pattern-config-manager",
-    "repository": "github-actions-feature-flag-integration",
+    "repository": "feature-flag-sync-action",
     "branch": "main",
     "commitHash": "placeholder"
   }
