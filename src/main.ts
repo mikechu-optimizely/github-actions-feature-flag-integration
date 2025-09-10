@@ -32,11 +32,16 @@ async function main(): Promise<void> {
     // Parse command line arguments and load environment
     const config = await parseConfiguration();
 
-    // Log execution start
+    // Log execution start with dry-run indication
+    const startMessage = config.dryRun
+      ? `Starting feature flag synchronization [DRY RUN MODE]`
+      : `Starting feature flag synchronization`;
+
+    info(startMessage);
     auditReporter.log({
       timestamp: new Date().toISOString(),
       type: "info",
-      message: `Starting feature flag synchronization`,
+      message: startMessage,
       details: {
         executionId: config.executionId,
         environment: config.environment,
@@ -100,6 +105,7 @@ async function parseConfiguration(): Promise<MainConfig> {
   const args = parseArgs(Deno.args, {
     string: ["environment", "operation", "reports-path"],
     boolean: ["dry-run", "help"],
+    negatable: ["dry-run"],
     default: {
       environment: "auto",
       operation: "cleanup",
@@ -150,6 +156,7 @@ async function initializeComponents(_config: MainConfig) {
     env.OPTIMIZELY_API_TOKEN!,
     {
       baseUrl: "https://api.optimizely.com/v2",
+      dryRun: _config.dryRun,
     },
   );
 
@@ -346,11 +353,18 @@ async function executeCleanupOrchestration(
 
     // Phase 6: Plan Execution (Cleanup Operations)
     const executionResult = await executePhase("execution", async () => {
-      info("🗑️ Phase 6: Executing synchronization plan");
+      const phaseMessage = config.dryRun
+        ? "🗑️ Phase 6: Simulating synchronization plan execution [DRY RUN]"
+        : "🗑️ Phase 6: Executing synchronization plan";
+      info(phaseMessage);
 
       if (config.operation === "audit") {
         info("🔍 Audit mode - skipping execution phase");
         return { status: "skipped", message: "Audit mode - no operations executed" };
+      }
+
+      if (config.dryRun) {
+        info("🔍 DRY RUN: Simulating operations without making actual changes");
       }
 
       const execResult = await flagSyncCore.executeSyncPlan(syncPlan);
@@ -374,7 +388,7 @@ async function executeCleanupOrchestration(
       });
 
       const statusMessage = config.dryRun
-        ? `✅ Dry-run execution complete - ${result.summary.totalExecuted} operations simulated`
+        ? `✅ DRY RUN execution complete - ${result.summary.totalExecuted} operations simulated successfully`
         : `✅ Execution complete - ${result.summary.successful} successful, ${result.summary.failed} failed`;
 
       info(statusMessage);
@@ -390,8 +404,13 @@ async function executeCleanupOrchestration(
         config.dryRun || config.operation === "audit" || !executionResult ||
         executionResult.status === "skipped"
       ) {
-        info("🔍 Skipping verification for dry-run/audit mode");
-        return "Verification skipped for dry-run/audit mode";
+        const skipMessage = config.dryRun
+          ? "🔍 Skipping verification for DRY RUN mode - no actual changes were made"
+          : "🔍 Skipping verification for audit mode";
+        info(skipMessage);
+        return config.dryRun
+          ? "Verification skipped for DRY RUN mode - no actual changes to verify"
+          : "Verification skipped for dry-run/audit mode";
       }
 
       // Re-validate consistency after execution
@@ -421,7 +440,10 @@ async function executeCleanupOrchestration(
 
     // Phase 8: Report Generation and Export
     await executePhase("reporting", async () => {
-      info("📄 Phase 8: Final report generation and export");
+      const reportMessage = config.dryRun
+        ? "📄 Phase 8: Generating DRY RUN analysis reports and what-if impact assessment"
+        : "📄 Phase 8: Final report generation and export";
+      info(reportMessage);
 
       // Generate comprehensive compliance report
       const complianceReport = complianceReporter.generateComplianceReport(
@@ -736,7 +758,8 @@ USAGE:
 OPTIONS:
   --environment <env>     Target environment (default: auto)
   --operation <op>        Operation type: cleanup, audit (default: cleanup)
-  --dry-run              Enable dry run mode (default: true)
+  --dry-run              Enable dry run mode - simulate operations safely (default: true)
+  --no-dry-run           Disable dry run mode - execute actual operations
   --reports-path <path>   Path for reports output (default: reports)
   --help                 Show this help message
 

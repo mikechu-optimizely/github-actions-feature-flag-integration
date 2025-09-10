@@ -44,6 +44,10 @@ export interface OptimizelyApiClientOptions {
    * Enable graceful degradation on API failures
    */
   enableGracefulDegradation?: boolean;
+  /**
+   * Enable dry-run mode (simulate API calls without making actual requests)
+   */
+  dryRun?: boolean;
 }
 
 /**
@@ -56,6 +60,7 @@ export class OptimizelyApiClient {
   private readonly maxRetries: number;
   private readonly timeoutMs: number;
   private readonly enableGracefulDegradation: boolean;
+  private readonly dryRun: boolean;
   private lastRequestTime: number = 0;
   private tokenValidated: boolean = false;
 
@@ -78,6 +83,7 @@ export class OptimizelyApiClient {
     this.maxRetries = Math.max(0, options.maxRetries ?? 3);
     this.timeoutMs = Math.max(1000, options.timeoutMs ?? 30000);
     this.enableGracefulDegradation = options.enableGracefulDegradation ?? true;
+    this.dryRun = options.dryRun ?? false;
 
     // Initialize enhanced error handling components
     this.circuitBreaker = new CircuitBreaker(
@@ -117,6 +123,7 @@ export class OptimizelyApiClient {
       maxRetries: this.maxRetries,
       timeoutMs: this.timeoutMs,
       enableGracefulDegradation: this.enableGracefulDegradation,
+      dryRun: this.dryRun,
     });
   }
 
@@ -1059,9 +1066,13 @@ export class OptimizelyApiClient {
 
   /**
    * Check if the API is currently available (circuit breaker is closed)
-   * @returns True if API is available
+   * In dry-run mode, always returns true to bypass connectivity checks
+   * @returns True if API is available or in dry-run mode
    */
   isApiAvailable(): boolean {
+    if (this.dryRun) {
+      return true; // Always available in dry-run mode
+    }
     return this.circuitBreaker.isAcceptingRequests() && this.healthMonitor.isAvailable();
   }
 
