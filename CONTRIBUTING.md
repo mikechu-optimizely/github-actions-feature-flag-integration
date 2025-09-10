@@ -4,15 +4,37 @@ Thank you for your interest in contributing to the Feature Flag Synchronization 
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Process](#development-process)
-- [Coding Standards](#coding-standards)
-- [Testing](#testing)
-- [Pull Request Process](#pull-request-process)
-- [Issue Reporting](#issue-reporting)
-- [Documentation](#documentation)
-- [Community](#community)
+- [Contributing to Feature Flag Synchronization Solution](#contributing-to-feature-flag-synchronization-solution)
+  - [Table of Contents](#table-of-contents)
+  - [Code of Conduct](#code-of-conduct)
+    - [Our Standards](#our-standards)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Development Setup](#development-setup)
+  - [Development Process](#development-process)
+    - [Branching Strategy](#branching-strategy)
+    - [Workflow](#workflow)
+    - [Branch Naming](#branch-naming)
+  - [Coding Standards](#coding-standards)
+    - [TypeScript Guidelines](#typescript-guidelines)
+    - [Code Style](#code-style)
+    - [Example](#example)
+  - [Testing](#testing)
+    - [Test Requirements](#test-requirements)
+    - [Test Structure](#test-structure)
+    - [Running Tests](#running-tests)
+  - [Documentation](#documentation)
+    - [Types of Documentation](#types-of-documentation)
+    - [Documentation Standards](#documentation-standards)
+    - [Generating API Documentation](#generating-api-documentation)
+  - [Community](#community)
+    - [Getting Help](#getting-help)
+    - [Recognition](#recognition)
+  - [Development Tips](#development-tips)
+    - [Performance Considerations](#performance-considerations)
+    - [Security Considerations](#security-considerations)
+    - [Debugging](#debugging)
+  - [Questions?](#questions)
 
 ## Code of Conduct
 
@@ -184,75 +206,6 @@ deno task test:watch
 deno test src/modules/flag-validator.test.ts --allow-all
 ```
 
-## Pull Request Process
-
-### Before Submitting
-
-1. **Update Documentation**: Ensure README, API docs, and inline comments are current
-2. **Run Pre-commit Checks**: `deno task precommit`
-3. **Test Coverage**: Verify tests pass and coverage is maintained
-4. **Rebase**: Rebase your branch on the latest `develop`
-
-### PR Description Template
-
-```markdown
-## Description
-Brief description of changes
-
-## Type of Change
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-
-## Testing
-- [ ] Tests pass locally
-- [ ] New tests added for new functionality
-- [ ] Manual testing completed
-
-## Checklist
-- [ ] Code follows project style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] No new warnings or errors introduced
-```
-
-### Review Process
-
-1. **Automated Checks**: CI/CD pipeline must pass
-2. **Code Review**: At least one maintainer review required
-3. **Testing**: All tests must pass
-4. **Documentation**: Documentation must be updated for user-facing changes
-
-## Issue Reporting
-
-### Bug Reports
-
-Use the bug report template and include:
-
-- Clear, descriptive title
-- Steps to reproduce
-- Expected vs actual behavior
-- Environment details (Deno version, OS)
-- Screenshots or logs if applicable
-
-### Feature Requests
-
-Use the feature request template and include:
-
-- Clear description of the problem
-- Proposed solution or feature
-- Alternative solutions considered
-- Additional context
-
-### Issue Labels
-
-- `bug`: Something isn't working
-- `enhancement`: New features or improvements
-- `documentation`: Documentation updates
-- `good first issue`: Good for newcomers
-- `help wanted`: Extra attention needed
-
 ## Documentation
 
 ### Types of Documentation
@@ -319,15 +272,6 @@ deno task start
 deno run --allow-read --allow-env src/main.ts
 ```
 
-## Release Process
-
-1. **Version Bump**: Update version in relevant files
-2. **Changelog**: Update CHANGELOG.md with new features and fixes
-3. **Documentation**: Ensure all documentation is current
-4. **Testing**: Run full test suite
-5. **Tag**: Create git tag with version number
-6. **Release**: Create GitHub release with notes
-
 ## Questions?
 
 If you have questions about contributing, please:
@@ -338,8 +282,3 @@ If you have questions about contributing, please:
 4. Contact maintainers directly for sensitive matters
 
 Thank you for contributing to making feature flag management better for everyone!
-
----
-
-**Last Updated**: 2024  
-**Version**: 1.0.0
