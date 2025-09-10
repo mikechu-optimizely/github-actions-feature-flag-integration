@@ -37,26 +37,26 @@
   "tasks": {
     "start": "deno run --allow-all src/main.ts",
     // Serial tests: Run tests that require sequential execution due to global state manipulation
-    "test:serial": "deno test --allow-all src/**/*.serial.test.ts",
+    "test:serial": "deno test --allow-all --quiet src/**/*.serial.test.ts",
     // Parallel tests: Run all other tests in parallel for speed, excluding serial tests
-    "test:parallel": "deno test --allow-all --parallel --ignore='**/*.serial.test.ts' src/",
+    "test:parallel": "deno test --allow-all --quiet --parallel --ignore='**/*.serial.test.ts' src/",
     // Main test task: Run serial tests first, then parallel tests
     "test": {
       "dependencies": ["test:serial"],
       "command": "deno task test:parallel"
     },
-    "test:watch": "deno test --allow-all --watch src/",
+    "test:watch": "deno test --allow-all --quiet --watch src/",
     // Coverage tasks: Generate coverage reports for both serial and parallel tests
-    "test:coverage:serial": "deno test --allow-all --coverage=coverage src/**/*.serial.test.ts",
-    "test:coverage:parallel": "deno test --allow-all --coverage=coverage --parallel --ignore='**/*.serial.test.ts' src/",
+    "test:coverage:serial": "deno test --allow-all --quiet --coverage=coverage src/**/*.serial.test.ts",
+    "test:coverage:parallel": "deno test --allow-all --quiet --coverage=coverage --parallel --ignore='**/*.serial.test.ts' src/",
     "test:coverage:report": "deno coverage coverage --lcov --output=coverage/coverage.lcov",
     "test:coverage": {
       "dependencies": ["test:coverage:serial"],
       "command": "deno task test:coverage:parallel && deno task test:coverage:report"
     },
     // CI tasks: Run tests with JUnit reporting for CI/CD pipelines
-    "test:ci:serial": "deno test --allow-all --coverage=coverage --reporter=junit --junit-path=./reports/test-results-serial.xml src/**/*.serial.test.ts",
-    "test:ci:parallel": "deno test --allow-all --coverage=coverage --reporter=junit --junit-path=./reports/test-results-parallel.xml --parallel --ignore='**/*.serial.test.ts' src/",
+    "test:ci:serial": "deno test --allow-all --quiet --coverage=coverage --reporter=junit --junit-path=./reports/test-results-serial.xml src/**/*.serial.test.ts",
+    "test:ci:parallel": "deno test --allow-all --quiet --coverage=coverage --reporter=junit --junit-path=./reports/test-results-parallel.xml --parallel --ignore='**/*.serial.test.ts' src/",
     "test:ci": {
       "dependencies": ["test:ci:serial"],
       "command": "deno task test:ci:parallel"
