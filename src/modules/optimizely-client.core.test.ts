@@ -229,7 +229,7 @@ Deno.test("OptimizelyApiClient Core: validateResponse handles different invalid 
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
     assert(result.error.message.includes("Expected object response from Optimizely API"));

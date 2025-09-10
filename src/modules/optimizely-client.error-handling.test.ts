@@ -111,7 +111,7 @@ Deno.test("OptimizelyApiClient Error: request handles network fetch errors", asy
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
   });
@@ -123,7 +123,7 @@ Deno.test("OptimizelyApiClient Error: request handles fetch throwing non-Error",
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
     assertEquals(result.error.message, "Non-Error failure");
@@ -150,7 +150,7 @@ Deno.test("OptimizelyApiClient Error: request retry mechanism on temporary failu
 
     const client = new OptimizelyApiClient("test-token", { maxRetries: 3 });
     const result = await client.request("/test");
-    
+
     assertEquals(result.error, null);
     assert(result.data);
     assertEquals((result.data as { data: string }).data, "success");
@@ -170,7 +170,7 @@ Deno.test("OptimizelyApiClient Error: request exhausts retries on persistent fai
 
     const client = new OptimizelyApiClient("test-token", { maxRetries: 2 });
     const result = await client.request("/test");
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
     assert(result.error.message.includes("503"));
@@ -199,15 +199,15 @@ Deno.test("OptimizelyApiClient Error: request handles response.json() parsing er
         statusText: "OK",
         headers: { "Content-Type": "application/json" },
       });
-      
+
       response.json = () => Promise.reject(new Error("JSON parsing failed"));
-      
+
       return Promise.resolve(response);
     };
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
   });
@@ -228,7 +228,7 @@ Deno.test("OptimizelyApiClient Error: parseErrorResponse handles different error
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
     assert(result.error.message.includes("Structured error message"));
@@ -247,7 +247,7 @@ Deno.test("OptimizelyApiClient Error: parseErrorResponse handles simple message 
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.request("/test");
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
     assert(result.error.message.includes("Simple error message"));
@@ -291,7 +291,7 @@ Deno.test("OptimizelyApiClient Error: performHealthCheck handles failures", asyn
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.performHealthCheck();
-    
+
     assertEquals(result.data, "UNHEALTHY");
     assertEquals(result.error, null);
   });
@@ -301,19 +301,19 @@ Deno.test("OptimizelyApiClient Error: enhanced error handling statistics", () =>
   const client = new OptimizelyApiClient("test-token", {
     enableGracefulDegradation: true,
   });
-  
+
   const healthStats = client.getHealthStats();
   assert(typeof healthStats === "object");
-  
+
   const circuitStats = client.getCircuitBreakerStats();
   assert(typeof circuitStats === "object");
-  
+
   const recoveryStats = client.getErrorRecoveryStats();
   assert(typeof recoveryStats === "object");
   assert("circuitBreaker" in recoveryStats);
   assert("health" in recoveryStats);
   assert("fallback" in recoveryStats);
-  
+
   const statusReport = client.getApiStatusReport();
   assert(typeof statusReport === "object");
   assert("timestamp" in statusReport);
@@ -324,11 +324,11 @@ Deno.test("OptimizelyApiClient Error: enhanced error handling statistics", () =>
 
 Deno.test("OptimizelyApiClient Error: reset error handling mechanisms", () => {
   const client = new OptimizelyApiClient("test-token");
-  
+
   client.resetErrorHandling();
-  
+
   client.forceCircuitBreakerOpen();
-  
+
   const dryRunClient = new OptimizelyApiClient("test-token", { dryRun: true });
   assertEquals(dryRunClient.isApiAvailable(), true);
 });
@@ -336,10 +336,10 @@ Deno.test("OptimizelyApiClient Error: reset error handling mechanisms", () => {
 Deno.test("OptimizelyApiClient Error: executeWithRecovery success", async () => {
   await withTestEnvironment(testEnvVars, async () => {
     const client = new OptimizelyApiClient("test-token");
-    
+
     const operation = () => Promise.resolve("operation successful");
     const result = await client.executeWithRecovery("test-operation", operation);
-    
+
     assertEquals(result.error, null);
     assertEquals(result.data, "operation successful");
   });
@@ -348,10 +348,10 @@ Deno.test("OptimizelyApiClient Error: executeWithRecovery success", async () => 
 Deno.test("OptimizelyApiClient Error: executeWithRecovery handles operation failures", async () => {
   await withTestEnvironment(testEnvVars, async () => {
     const client = new OptimizelyApiClient("test-token");
-    
+
     const operation = () => Promise.reject(new Error("Operation failed"));
     const result = await client.executeWithRecovery("failing-operation", operation);
-    
+
     assert(result.error instanceof Error);
     assertEquals(result.data, null);
   });
@@ -360,16 +360,19 @@ Deno.test("OptimizelyApiClient Error: executeWithRecovery handles operation fail
 Deno.test("OptimizelyApiClient Error: executeWithRecovery handles unexpected errors", async () => {
   await withTestEnvironment(testEnvVars, async () => {
     const client = new OptimizelyApiClient("test-token");
-    
+
     const operation = () => {
       throw new Error("Recovery manager failure");
     };
-    
+
     const result = await client.executeWithRecovery("test-operation", operation);
-    
+
     assert(result.error instanceof Error);
     assertEquals(result.data, null);
     assert(result.error.message.includes("Recovery manager failure"));
+
+    // Allow any pending timers to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
   });
 });
 

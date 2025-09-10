@@ -9,7 +9,7 @@ import { OptimizelyApiClient } from "./optimizely-client.ts";
 import { FlagUsage } from "./code-analysis.ts";
 import { FlagUsageReport } from "./flag-usage-reporter.ts";
 import { OptimizelyFlag } from "../types/optimizely.ts";
-import { SyncPlan, SyncOperation, RiskLevel } from "../types/sync.ts";
+import { RiskLevel, SyncOperation, SyncPlan } from "../types/sync.ts";
 import { assert } from "@std/assert";
 
 /**
@@ -606,7 +606,7 @@ Deno.test("FlagSyncCore - validateConsistency with real consistency validator", 
     ["inconsistent_flag", [createMockFlagUsage("inconsistent_flag", "src/test.ts", 15)]], // Used but archived
   ]);
 
-  const usageReport = createMockUsageReport(flags.map(f => f.key), usageMap);
+  const usageReport = createMockUsageReport(flags.map((f) => f.key), usageMap);
 
   const result = await flagSyncCore.validateConsistency(flags, usageReport);
 
@@ -703,7 +703,7 @@ Deno.test("FlagSyncCore - executeSyncPlan checks risk tolerance", async () => {
 
 Deno.test("FlagSyncCore - executeSyncPlan handles batch failures with high failure rate", async () => {
   const { flagSyncCore, mockClient } = createEnhancedTestFlagSyncCore(true);
-  
+
   // Set all archive operations to fail
   mockClient.setShouldFailArchive(true);
 
@@ -837,8 +837,8 @@ Deno.test("FlagSyncCore - createSyncPlan generates different operation types", a
   ]);
 
   const usageReport = createMockUsageReport(
-    flags.map(f => f.key),
-    usageMap
+    flags.map((f) => f.key),
+    usageMap,
   );
   usageReport.unusedFlagKeys = ["unused_flag"];
 
@@ -848,19 +848,19 @@ Deno.test("FlagSyncCore - createSyncPlan generates different operation types", a
   assertEquals(result.error, null);
 
   const plan = result.data!;
-  
+
   // Should have operations for unused_flag (archive) and used_but_archived (enable)
   assertEquals(plan.operations.length, 2);
-  
-  const archiveOp = plan.operations.find(op => op.type === "archive");
-  const enableOp = plan.operations.find(op => op.type === "enable");
-  
+
+  const archiveOp = plan.operations.find((op) => op.type === "archive");
+  const enableOp = plan.operations.find((op) => op.type === "enable");
+
   assertExists(archiveOp);
   assertExists(enableOp);
-  
+
   assertEquals(archiveOp.flagKey, "unused_flag");
   assertEquals(archiveOp.riskLevel, "medium");
-  
+
   assertEquals(enableOp.flagKey, "used_but_archived");
   assertEquals(enableOp.riskLevel, "high");
 });
@@ -876,12 +876,14 @@ Deno.test("FlagSyncCore - plan validation with different risk scenarios", async 
 
   const usageMap = new Map();
   for (let i = 0; i < 10; i++) {
-    usageMap.set(`high_risk_flag_${i}`, [createMockFlagUsage(`high_risk_flag_${i}`, "src/test.ts", i)]);
+    usageMap.set(`high_risk_flag_${i}`, [
+      createMockFlagUsage(`high_risk_flag_${i}`, "src/test.ts", i),
+    ]);
   }
 
   const usageReport = createMockUsageReport(
-    manyHighRiskFlags.map(f => f.key),
-    usageMap
+    manyHighRiskFlags.map((f) => f.key),
+    usageMap,
   );
 
   const result = await flagSyncCore.createSyncPlan(manyHighRiskFlags, usageReport);
@@ -891,7 +893,7 @@ Deno.test("FlagSyncCore - plan validation with different risk scenarios", async 
 
   const plan = result.data!;
   assert(plan.validationResults.warnings.length > 0);
-  assert(plan.validationResults.warnings.some(w => w.includes("high-risk operations")));
+  assert(plan.validationResults.warnings.some((w) => w.includes("high-risk operations")));
   assertEquals(plan.validationResults.riskAssessment.overallRisk, "high");
 });
 
@@ -905,10 +907,10 @@ Deno.test("FlagSyncCore - plan validation with large archive batch", async () =>
   }
 
   const usageReport = createMockUsageReport(
-    manyUnusedFlags.map(f => f.key),
-    new Map()
+    manyUnusedFlags.map((f) => f.key),
+    new Map(),
   );
-  usageReport.unusedFlagKeys = manyUnusedFlags.map(f => f.key);
+  usageReport.unusedFlagKeys = manyUnusedFlags.map((f) => f.key);
 
   const result = await flagSyncCore.createSyncPlan(manyUnusedFlags, usageReport);
 
@@ -916,7 +918,9 @@ Deno.test("FlagSyncCore - plan validation with large archive batch", async () =>
   assertEquals(result.error, null);
 
   const plan = result.data!;
-  assert(plan.validationResults.warnings.some(w => w.includes("Large number of archive operations")));
+  assert(
+    plan.validationResults.warnings.some((w) => w.includes("Large number of archive operations")),
+  );
 });
 
 Deno.test("FlagSyncCore - executeSyncPlan with disable and update operations", async () => {
@@ -941,7 +945,7 @@ Deno.test("FlagSyncCore - executeSyncPlan with disable and update operations", a
       },
     },
     {
-      id: "update-op", 
+      id: "update-op",
       type: "update",
       flagKey: "update-flag",
       riskLevel: "medium",
@@ -995,13 +999,13 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with manual override exclusions", a
   const { flagSyncCore } = createEnhancedTestFlagSyncCore(false);
 
   // Mock override config manager
-  const originalIsExcluded = (globalThis as any).overrideConfigManager?.isExcluded;
-  if (!(globalThis as any).overrideConfigManager) {
-    (globalThis as any).overrideConfigManager = { isExcluded: () => Promise.resolve(false) };
+  const originalIsExcluded = (globalThis as unknown as { overrideConfigManager?: { isExcluded?: unknown } }).overrideConfigManager?.isExcluded;
+  if (!(globalThis as unknown as { overrideConfigManager?: unknown }).overrideConfigManager) {
+    (globalThis as unknown as { overrideConfigManager: { isExcluded: (flagKey: string) => Promise<boolean> } }).overrideConfigManager = { isExcluded: () => Promise.resolve(false) };
   }
-  
+
   // Override to exclude one flag
-  (globalThis as any).overrideConfigManager.isExcluded = (flagKey: string) => {
+  (globalThis as unknown as { overrideConfigManager: { isExcluded: (flagKey: string) => Promise<boolean> } }).overrideConfigManager.isExcluded = (flagKey: string) => {
     return Promise.resolve(flagKey === "excluded_flag");
   };
 
@@ -1012,7 +1016,7 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with manual override exclusions", a
 
   const usageReport = createMockUsageReport(
     ["excluded_flag", "normal_flag"],
-    new Map()
+    new Map(),
   );
 
   try {
@@ -1026,8 +1030,8 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with manual override exclusions", a
     // Skip checking specific skip reason since exclusion mock isn't working
   } finally {
     // Restore original
-    if (originalIsExcluded && (globalThis as any).overrideConfigManager) {
-      (globalThis as any).overrideConfigManager.isExcluded = originalIsExcluded;
+    if (originalIsExcluded && (globalThis as unknown as { overrideConfigManager?: { isExcluded?: unknown } }).overrideConfigManager) {
+      (globalThis as unknown as { overrideConfigManager: { isExcluded: unknown } }).overrideConfigManager.isExcluded = originalIsExcluded;
     }
   }
 });
@@ -1036,15 +1040,16 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with approval workflow blocking", a
   const { flagSyncCore } = createEnhancedTestFlagSyncCore(false);
 
   // Mock approval workflow manager
-  const originalCheckAndRequestApproval = (globalThis as any).approvalWorkflowManager?.checkAndRequestApproval;
-  if (!(globalThis as any).approvalWorkflowManager) {
-    (globalThis as any).approvalWorkflowManager = {
-      checkAndRequestApproval: () => Promise.resolve({ requiresApproval: false, canProceed: true })
+  const originalCheckAndRequestApproval = (globalThis as unknown as { approvalWorkflowManager?: { checkAndRequestApproval?: unknown } }).approvalWorkflowManager
+    ?.checkAndRequestApproval;
+  if (!(globalThis as unknown as { approvalWorkflowManager?: unknown }).approvalWorkflowManager) {
+    (globalThis as unknown as { approvalWorkflowManager: { checkAndRequestApproval: (flagKey: string) => Promise<{ requiresApproval: boolean; canProceed: boolean }> } }).approvalWorkflowManager = {
+      checkAndRequestApproval: () => Promise.resolve({ requiresApproval: false, canProceed: true }),
     };
   }
 
   // Override to require approval for blocked flag
-  (globalThis as any).approvalWorkflowManager.checkAndRequestApproval = (flagKey: string) => {
+  (globalThis as unknown as { approvalWorkflowManager: { checkAndRequestApproval: (flagKey: string) => Promise<{ requiresApproval: boolean; canProceed: boolean }> } }).approvalWorkflowManager.checkAndRequestApproval = (flagKey: string) => {
     if (flagKey === "blocked_flag") {
       return Promise.resolve({ requiresApproval: true, canProceed: false });
     }
@@ -1058,7 +1063,7 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with approval workflow blocking", a
 
   const usageReport = createMockUsageReport(
     ["blocked_flag", "approved_flag"],
-    new Map()
+    new Map(),
   );
 
   try {
@@ -1072,8 +1077,9 @@ Deno.test("FlagSyncCore - archiveUnusedFlags with approval workflow blocking", a
     // Skip checking specific skip reason since approval mock isn't working
   } finally {
     // Restore original
-    if (originalCheckAndRequestApproval && (globalThis as any).approvalWorkflowManager) {
-      (globalThis as any).approvalWorkflowManager.checkAndRequestApproval = originalCheckAndRequestApproval;
+    if (originalCheckAndRequestApproval && (globalThis as unknown as { approvalWorkflowManager?: { checkAndRequestApproval?: unknown } }).approvalWorkflowManager) {
+      (globalThis as unknown as { approvalWorkflowManager: { checkAndRequestApproval: unknown } }).approvalWorkflowManager.checkAndRequestApproval =
+        originalCheckAndRequestApproval;
     }
   }
 });
@@ -1094,7 +1100,7 @@ Deno.test("FlagSyncCore - archiveUnusedFlags handles individual failures during 
 
   const usageReport = createMockUsageReport(
     ["failing_flag_1", "failing_flag_2"],
-    new Map()
+    new Map(),
   );
 
   const result = await flagSyncCore.archiveUnusedFlags(flags, usageReport);
@@ -1196,7 +1202,7 @@ Deno.test("FlagSyncCore - constructor with custom options", () => {
   };
 
   const flagSyncCore = new FlagSyncCore(mockApiClient, customOptions);
-  
+
   // Access private options for verification
   assertEquals(flagSyncCore["options"].dryRun, false);
   assertEquals(flagSyncCore["options"].maxConcurrentOperations, 5);
@@ -1221,10 +1227,15 @@ Deno.test("FlagSyncCore - should handle flags with critical risk tolerance", asy
 
   const criticalUsageMap = new Map();
   for (let i = 0; i < 15; i++) {
-    criticalUsageMap.set(`critical_flag_${i}`, [createMockFlagUsage(`critical_flag_${i}`, "src/test.ts", i)]);
+    criticalUsageMap.set(`critical_flag_${i}`, [
+      createMockFlagUsage(`critical_flag_${i}`, "src/test.ts", i),
+    ]);
   }
 
-  const criticalUsageReport = createMockUsageReport(criticalFlags.map(f => f.key), criticalUsageMap);
+  const criticalUsageReport = createMockUsageReport(
+    criticalFlags.map((f) => f.key),
+    criticalUsageMap,
+  );
 
   const result = await flagSyncCore.createSyncPlan(criticalFlags, criticalUsageReport);
 

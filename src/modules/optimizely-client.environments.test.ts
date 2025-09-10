@@ -318,10 +318,13 @@ Deno.test("OptimizelyApiClient Env: getEnvironments handles missing project ID",
   await withTestEnvironment({ ...testEnvVars, OPTIMIZELY_PROJECT_ID: "" }, async () => {
     const client = new OptimizelyApiClient("test-token");
     const result = await client.getEnvironments();
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
-    assertEquals(result.error.message, "Failed to fetch environments: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.");
+    assertEquals(
+      result.error.message,
+      "Failed to fetch environments: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.",
+    );
   });
 });
 

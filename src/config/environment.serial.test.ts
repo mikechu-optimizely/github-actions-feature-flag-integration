@@ -1,6 +1,6 @@
-import { assertEnvApiAvailable, loadEnvironment, getSanitizedConfig } from "./environment.ts";
-import { assertEquals, assertRejects, assertThrows } from "@std/assert";
-import { withTestEnvironment, createTempDir, cleanupTempDir } from "../utils/test-helpers.ts";
+import { assertEnvApiAvailable, getSanitizedConfig, loadEnvironment } from "./environment.ts";
+import { assertEquals, assertRejects } from "@std/assert";
+import { withTestEnvironment } from "../utils/test-helpers.ts";
 
 /**
  * Environment variable tests that modify global state.
@@ -444,7 +444,9 @@ Deno.test({
           Error,
         );
         assertEquals(
-          error.message.includes("Invalid REPORTS_PATH. Must be a relative path without directory traversal"),
+          error.message.includes(
+            "Invalid REPORTS_PATH. Must be a relative path without directory traversal",
+          ),
           true,
           `Expected error message for path traversal, got: ${error.message}`,
         );
@@ -460,7 +462,9 @@ Deno.test({
           Error,
         );
         assertEquals(
-          error.message.includes("Invalid REPORTS_PATH. Must be a relative path without directory traversal"),
+          error.message.includes(
+            "Invalid REPORTS_PATH. Must be a relative path without directory traversal",
+          ),
           true,
           `Expected error message for absolute path, got: ${error.message}`,
         );
@@ -484,8 +488,8 @@ Deno.test({
         );
         // The error should mention the failed directory creation
         assertEquals(
-          error.message.includes("Failed to create reports directory") || 
-          error.message.includes("Invalid REPORTS_PATH"),
+          error.message.includes("Failed to create reports directory") ||
+            error.message.includes("Invalid REPORTS_PATH"),
           true,
           `Expected error message for directory creation failure, got: ${error.message}`,
         );
@@ -511,23 +515,26 @@ Deno.test({
       });
     });
 
-    await t.step("loadEnvironment treats whitespace-only strings as missing variables", async () => {
-      await withTestEnvironment({
-        OPTIMIZELY_API_TOKEN: "   ", // Whitespace-only string should be treated as missing
-        OPTIMIZELY_PROJECT_ID: "123456",
-        REPORTS_PATH: "test-reports-whitespace-token",
-      }, async () => {
-        const error = await assertRejects(
-          async () => await loadEnvironment(),
-          Error,
-        );
-        assertEquals(
-          error.message.includes("Missing required environment variables: OPTIMIZELY_API_TOKEN"),
-          true,
-          `Expected error message for whitespace token, got: ${error.message}`,
-        );
-      });
-    });
+    await t.step(
+      "loadEnvironment treats whitespace-only strings as missing variables",
+      async () => {
+        await withTestEnvironment({
+          OPTIMIZELY_API_TOKEN: "   ", // Whitespace-only string should be treated as missing
+          OPTIMIZELY_PROJECT_ID: "123456",
+          REPORTS_PATH: "test-reports-whitespace-token",
+        }, async () => {
+          const error = await assertRejects(
+            async () => await loadEnvironment(),
+            Error,
+          );
+          assertEquals(
+            error.message.includes("Missing required environment variables: OPTIMIZELY_API_TOKEN"),
+            true,
+            `Expected error message for whitespace token, got: ${error.message}`,
+          );
+        });
+      },
+    );
 
     // Test multiple missing required variables
     await t.step("loadEnvironment reports all missing required variables", async () => {
@@ -537,7 +544,9 @@ Deno.test({
           Error,
         );
         assertEquals(
-          error.message.includes("Missing required environment variables: OPTIMIZELY_API_TOKEN, OPTIMIZELY_PROJECT_ID"),
+          error.message.includes(
+            "Missing required environment variables: OPTIMIZELY_API_TOKEN, OPTIMIZELY_PROJECT_ID",
+          ),
           true,
           `Expected error message for multiple missing variables, got: ${error.message}`,
         );

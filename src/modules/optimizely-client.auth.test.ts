@@ -84,7 +84,7 @@ Deno.test("OptimizelyApiClient Auth: validateTokenAccess handles unexpected erro
 
     const client = new OptimizelyApiClient("test-token");
     const result = await client.validateTokenAccess();
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
     assertEquals(result.error.message, "Token validation failed: Non-Error object");

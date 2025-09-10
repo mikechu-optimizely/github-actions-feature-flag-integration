@@ -501,14 +501,17 @@ Deno.test("PlanPreviewManager generatePreview handles errors gracefully", () => 
   // Create an invalid plan to trigger an error
   const invalidPlan = createMockCleanupPlan({ operationsCount: 1 });
   // Corrupt the plan data to trigger formatting errors
-  (invalidPlan as any).metadata = null;
+  (invalidPlan as unknown as { metadata: null }).metadata = null;
 
   const result = manager.generatePreview(invalidPlan);
-  
+
   // Should handle error gracefully
   assert(result.error !== null, "Should have error for invalid plan");
   assert(result.data === null, "Should not have data when error occurs");
-  assert(result.error.message.includes("Failed to generate plan preview"), "Should have appropriate error message");
+  assert(
+    result.error.message.includes("Failed to generate plan preview"),
+    "Should have appropriate error message",
+  );
 
   cleanupTestEnvironment();
 });
@@ -518,21 +521,24 @@ Deno.test("PlanPreviewManager requestConfirmation handles errors gracefully", as
 
   const manager = new PlanPreviewManager();
   const plan = createMockCleanupPlan({ operationsCount: 1 });
-  
+
   // Create corrupted preview to trigger error in confirmation
   const corruptedPreview = {
     content: "test",
-    metadata: null as any, // This should trigger an error
+    metadata: null as unknown, // This should trigger an error
     isSafeToExecute: true,
     warnings: [],
-  };
+  } as unknown as import("./plan-preview.ts").PlanPreviewResult;
 
   const result = await manager.requestConfirmation(plan, corruptedPreview);
-  
+
   // Should handle error gracefully
   assert(result.error !== null, "Should have error for corrupted preview");
   assert(result.data === null, "Should not have data when error occurs");
-  assert(result.error.message.includes("Failed to request confirmation"), "Should have appropriate error message");
+  assert(
+    result.error.message.includes("Failed to request confirmation"),
+    "Should have appropriate error message",
+  );
 
   cleanupTestEnvironment();
 });
@@ -541,17 +547,20 @@ Deno.test("PlanPreviewManager reviewPlan handles preview generation errors", asy
   setupTestEnvironment();
 
   const manager = new PlanPreviewManager();
-  
+
   // Create an invalid plan to trigger preview error
   const invalidPlan = createMockCleanupPlan({ operationsCount: 1 });
-  (invalidPlan as any).metadata = null;
+  (invalidPlan as unknown as { metadata: null }).metadata = null;
 
   const result = await manager.reviewPlan(invalidPlan);
-  
+
   // Should handle error gracefully and not proceed to confirmation
   assert(result.error !== null, "Should have error from preview generation");
   assert(result.data === null, "Should not have data when preview fails");
-  assert(result.error.message.includes("Failed to generate plan preview"), "Should propagate preview error");
+  assert(
+    result.error.message.includes("Failed to generate plan preview"),
+    "Should propagate preview error",
+  );
 
   cleanupTestEnvironment();
 });
@@ -566,12 +575,12 @@ Deno.test("PlanPreviewManager reviewPlan handles confirmation errors", async () 
   });
 
   const plan = createMockCleanupPlan({ operationsCount: 1, hasHighRiskOperations: true });
-  
+
   // Force an error by corrupting operations to trigger confirmation failure
-  plan.operations = null as any;
+  plan.operations = null as unknown as typeof plan.operations;
 
   const result = await manager.reviewPlan(plan);
-  
+
   // Should handle confirmation error after successful preview
   if (result.error) {
     assert(result.error.message.includes("Failed to review plan"), "Should have review error");
@@ -596,17 +605,21 @@ Deno.test("PlanPreviewManager handles different risk levels correctly", () => {
   const criticalPlan = createMockCleanupPlan({ operationsCount: 1 });
   criticalPlan.operations[0].riskLevel = "critical";
   criticalPlan.metadata.riskAssessment.overallRisk = "critical";
-  
+
   const criticalResult = manager.generatePreview(criticalPlan);
   assert(criticalResult.data !== null, "Critical plan preview should succeed");
-  assertEquals(criticalResult.data!.isSafeToExecute, false, "Critical plan should not be safe to execute");
+  assertEquals(
+    criticalResult.data!.isSafeToExecute,
+    false,
+    "Critical plan should not be safe to execute",
+  );
   assert(criticalResult.data!.warnings.length > 0, "Should have warnings for critical risk");
 
   // Test medium risk level
   const mediumPlan = createMockCleanupPlan({ operationsCount: 1 });
   mediumPlan.operations[0].riskLevel = "medium";
   mediumPlan.metadata.riskAssessment.overallRisk = "medium";
-  
+
   const mediumResult = manager.generatePreview(mediumPlan);
   assert(mediumResult.data !== null, "Medium plan preview should succeed");
   assertEquals(mediumResult.data!.isSafeToExecute, true, "Medium plan should be safe to execute");
@@ -628,17 +641,24 @@ Deno.test("PlanPreviewManager handles confirmation with different explicit confi
   const highRiskPlan = createMockCleanupPlan({ operationsCount: 1, hasHighRiskOperations: true });
   const previewResult = manager.generatePreview(highRiskPlan);
   const confirmationResult = await manager.requestConfirmation(highRiskPlan, previewResult.data!);
-  
-  assertEquals(confirmationResult.data!.confirmed, false, "High risk should be rejected when interactive disabled");
+
+  assertEquals(
+    confirmationResult.data!.confirmed,
+    false,
+    "High risk should be rejected when interactive disabled",
+  );
   assertEquals(confirmationResult.data!.method, "automatic");
 
   // Test with medium risk operation (should be allowed)
   const mediumRiskPlan = createMockCleanupPlan({ operationsCount: 1 });
   mediumRiskPlan.operations[0].riskLevel = "medium";
-  
+
   const mediumPreviewResult = manager.generatePreview(mediumRiskPlan);
-  const mediumConfirmationResult = await manager.requestConfirmation(mediumRiskPlan, mediumPreviewResult.data!);
-  
+  const mediumConfirmationResult = await manager.requestConfirmation(
+    mediumRiskPlan,
+    mediumPreviewResult.data!,
+  );
+
   // Should timeout since it requires explicit confirmation but not in explicit list
   assertEquals(mediumConfirmationResult.data!.method, "timeout");
 
@@ -658,10 +678,18 @@ Deno.test("PlanPreviewManager formats JSON without optional sections when disabl
   const result = manager.generatePreview(plan);
 
   assert(result.data !== null, "Preview generation should succeed");
-  
+
   const parsedJson = JSON.parse(result.data!.content);
-  assertEquals(parsedJson.operations, undefined, "Should not include operations when showDetails is false");
-  assertEquals(parsedJson.riskAssessment, undefined, "Should not include risk assessment when includeRiskAnalysis is false");
+  assertEquals(
+    parsedJson.operations,
+    undefined,
+    "Should not include operations when showDetails is false",
+  );
+  assertEquals(
+    parsedJson.riskAssessment,
+    undefined,
+    "Should not include risk assessment when includeRiskAnalysis is false",
+  );
   assertExists(parsedJson.summary, "Should still include summary");
   assertExists(parsedJson.validation, "Should still include validation");
 
@@ -679,10 +707,10 @@ Deno.test("PlanPreviewManager handles markdown preview with rollback info", () =
 
   const plan = createMockCleanupPlan({ operationsCount: 1 });
   plan.operations[0].rollbackInfo!.supported = true;
-  
+
   const result = manager.generatePreview(plan);
   assert(result.data !== null, "Preview generation should succeed");
-  
+
   const content = result.data!.content;
   assert(content.includes("**Rollback:** Supported"), "Should show rollback info in markdown");
 
@@ -700,10 +728,10 @@ Deno.test("PlanPreviewManager handles console preview with rollback info disable
 
   const plan = createMockCleanupPlan({ operationsCount: 1 });
   plan.operations[0].rollbackInfo!.supported = true;
-  
+
   const result = manager.generatePreview(plan);
   assert(result.data !== null, "Preview generation should succeed");
-  
+
   const content = result.data!.content;
   assert(!content.includes("Rollback: Supported"), "Should not show rollback info when disabled");
 
@@ -719,14 +747,14 @@ Deno.test("PlanPreviewManager generates warnings for critical operations", () =>
   plan.operations[0].riskLevel = "critical";
   plan.operations[1].riskLevel = "critical";
   plan.metadata.riskAssessment.overallRisk = "critical";
-  
+
   const result = manager.generatePreview(plan);
   assert(result.data !== null, "Preview should succeed");
-  
+
   const preview = result.data!;
   assert(preview.warnings.length > 0, "Should have warnings");
-  
-  const hasCriticalWarning = preview.warnings.some(w => w.includes("critical risk operations"));
+
+  const hasCriticalWarning = preview.warnings.some((w) => w.includes("critical risk operations"));
   assert(hasCriticalWarning, "Should warn about critical risk operations");
 
   cleanupTestEnvironment();
@@ -739,13 +767,13 @@ Deno.test("PlanPreviewManager handles plans with no validation warnings", () => 
 
   const plan = createMockCleanupPlan({ operationsCount: 1 });
   plan.validation.warnings = []; // No warnings
-  
+
   const result = manager.generatePreview(plan);
   assert(result.data !== null, "Preview should succeed");
-  
+
   const preview = result.data!;
   const content = preview.content;
-  
+
   assert(!content.includes("WARNINGS:"), "Should not show warnings section when no warnings");
 
   cleanupTestEnvironment();
@@ -762,16 +790,16 @@ Deno.test("PlanPreviewManager handles plans with recommendations in risk analysi
   const plan = createMockCleanupPlan({ operationsCount: 1 });
   plan.metadata.riskAssessment.recommendations = [
     "Test recommendation 1",
-    "Test recommendation 2"
+    "Test recommendation 2",
   ];
   plan.metadata.riskAssessment.potentialImpact = [
     "Test impact 1",
-    "Test impact 2"
+    "Test impact 2",
   ];
-  
+
   const result = manager.generatePreview(plan);
   assert(result.data !== null, "Preview should succeed");
-  
+
   const content = result.data!.content;
   assert(content.includes("Recommendations:"), "Should show recommendations section");
   assert(content.includes("Test recommendation 1"), "Should show specific recommendation");
@@ -792,10 +820,10 @@ Deno.test("PlanPreviewManager handles empty recommendations and impact", () => {
   const plan = createMockCleanupPlan({ operationsCount: 1 });
   plan.metadata.riskAssessment.recommendations = [];
   plan.metadata.riskAssessment.potentialImpact = [];
-  
+
   const result = manager.generatePreview(plan);
   assert(result.data !== null, "Preview should succeed");
-  
+
   const content = result.data!.content;
   assert(!content.includes("Recommendations:"), "Should not show empty recommendations section");
   assert(!content.includes("Potential Impact:"), "Should not show empty impact section");
@@ -815,15 +843,18 @@ Deno.test("PlanPreviewManager confirmation workflow with interactive allowed han
 
   const plan = createMockCleanupPlan({ operationsCount: 1 });
   plan.operations[0].riskLevel = "medium";
-  
+
   const previewResult = manager.generatePreview(plan);
   const confirmationResult = await manager.requestConfirmation(plan, previewResult.data!);
-  
+
   assert(confirmationResult.data !== null, "Confirmation should complete");
   assertEquals(confirmationResult.data!.confirmed, false, "Should not be confirmed due to timeout");
   assertEquals(confirmationResult.data!.method, "timeout");
   assertExists(confirmationResult.data!.userNotes);
-  assert(confirmationResult.data!.userNotes!.includes("manual confirmation"), "Should mention manual confirmation needed");
+  assert(
+    confirmationResult.data!.userNotes!.includes("manual confirmation"),
+    "Should mention manual confirmation needed",
+  );
 
   cleanupTestEnvironment();
 });
@@ -839,12 +870,16 @@ Deno.test("PlanPreviewManager handles non-high-risk operations with interactive 
 
   const plan = createMockCleanupPlan({ operationsCount: 1 });
   plan.operations[0].riskLevel = "low"; // Low risk should not require explicit confirmation
-  
+
   const previewResult = manager.generatePreview(plan);
   const confirmationResult = await manager.requestConfirmation(plan, previewResult.data!);
-  
+
   assert(confirmationResult.data !== null, "Confirmation should complete");
-  assertEquals(confirmationResult.data!.confirmed, true, "Low risk should be automatically confirmed");
+  assertEquals(
+    confirmationResult.data!.confirmed,
+    true,
+    "Low risk should be automatically confirmed",
+  );
   assertEquals(confirmationResult.data!.method, "automatic");
 
   cleanupTestEnvironment();

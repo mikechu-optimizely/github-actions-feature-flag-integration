@@ -388,17 +388,20 @@ Deno.test("OptimizelyApiClient Flags: getAllFeatureFlags handles missing project
   await withTestEnvironment({ ...testEnvVars, OPTIMIZELY_PROJECT_ID: "" }, async () => {
     const client = new OptimizelyApiClient("test-token");
     const result = await client.getAllFeatureFlags();
-    
+
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
-    assertEquals(result.error.message, "Failed to fetch feature flags: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.");
+    assertEquals(
+      result.error.message,
+      "Failed to fetch feature flags: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.",
+    );
   });
 });
 
 Deno.test("OptimizelyApiClient Flags: getAllFeatureFlags handles pagination edge case with large page count", async () => {
   await withTestEnvironment(testEnvVars, async () => {
     const client = new OptimizelyApiClient("test-token");
-    
+
     let callCount = 0;
     client.request = (<T = unknown>(
       _path: string,
@@ -422,7 +425,7 @@ Deno.test("OptimizelyApiClient Flags: getAllFeatureFlags handles pagination edge
     }) as typeof client.request;
 
     const result = await client.getAllFeatureFlags();
-    
+
     assertEquals(callCount, 100);
     assertEquals(result.data?.length, 100);
     assert(result.data);
