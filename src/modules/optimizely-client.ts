@@ -180,7 +180,7 @@ export class OptimizelyApiClient {
       logger.info("Optimizely API token validated successfully");
       return { data: true, error: null };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Token validation error", { error: errorMsg });
       return { data: null, error: new Error(`Token validation failed: ${errorMsg}`) };
     }
@@ -277,7 +277,7 @@ export class OptimizelyApiClient {
         this.maxRetries,
       );
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
 
       if (this.enableGracefulDegradation) {
         logger.warn("API request failed, graceful degradation enabled", {
@@ -370,7 +370,7 @@ export class OptimizelyApiClient {
 
       return { data: allFlags, error: null };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in getAllFeatureFlags", { error: errorMsg });
       return {
         data: null,
@@ -440,7 +440,7 @@ export class OptimizelyApiClient {
 
       return { data: result.data, error: null };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in archiveFeatureFlags", { flagKeys, error: errorMsg });
       return {
         data: null,
@@ -526,7 +526,7 @@ export class OptimizelyApiClient {
 
       return { data: result.data, error: null };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in unarchiveFeatureFlags", { flagKeys, error: errorMsg });
       return {
         data: null,
@@ -602,7 +602,7 @@ export class OptimizelyApiClient {
 
       return { data: result.data, error: null };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in getFlagDetails", { flagKey, error: errorMsg });
       return {
         data: null,
@@ -672,7 +672,7 @@ export class OptimizelyApiClient {
 
       return result;
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in getFlagStatusInEnvironment", {
         flagKey,
         environmentKey,
@@ -750,7 +750,7 @@ export class OptimizelyApiClient {
 
       return { data: environmentStatusMap, error: null };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in getFlagStatusAcrossEnvironments", {
         flagKey,
         error: errorMsg,
@@ -875,7 +875,7 @@ export class OptimizelyApiClient {
 
       return { data: validation, error: null };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in validateFlagConsistency", {
         flagKey,
         error: errorMsg,
@@ -931,7 +931,7 @@ export class OptimizelyApiClient {
 
       return { data: environments, error: null };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in getEnvironments", { error: errorMsg });
       return {
         data: null,
@@ -1122,7 +1122,7 @@ export class OptimizelyApiClient {
         };
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Error in executeWithRecovery", { operationKey, error: errorMsg });
       return { data: null, error: new Error(`Recovery execution failed: ${errorMsg}`) };
     }
