@@ -1,4 +1,10 @@
-# Feature Flag Cleanup Solution: Phased Task Plan
+# Feature Flag Cleanup Solution: GitHub Marketplace Action
+
+**PROJECT TYPE**: This is a GitHub Marketplace Action project. We are building a composite action (`action.yml`) that will be published to the GitHub Marketplace for consumption by other repositories via `uses: optimizely/feature-flag-sync-action@v1`.
+
+**DELIVERABLE**: A reusable GitHub Action with TypeScript/Deno core that provides automated feature flag synchronization capabilities to any repository.
+
+## Phased Task Plan
 
 Instructions: 
 1. Work on the parent task you were given by title which should have a status of `WIP`.
@@ -190,19 +196,27 @@ TODO: Tasks that have been completed
   - [x] Implement what-if analysis and impact assessment
   - [x] Create dry-run validation and testing workflows
 
-## Phase 6: Workflow Integration & User Experience
-- TODO: Implement workflow dispatch with operation choices (cleanup, audit)
-  - [ ] Configure workflow_dispatch inputs in GitHub Actions
-  - [ ] Add operation type selection (cleanup, audit)
-  - [ ] Implement operation-specific execution paths
-  - [ ] Create operation validation and safety checks
-  - [ ] Add operation result reporting and notifications
-- TODO: Add PR comment integration for synchronization visibility
-  - [ ] Implement actions/github-script@v7 integration
-  - [ ] Create PR summary report generation (reports/pr-summary.md)
-  - [ ] Add flag change impact analysis for PRs
-  - [ ] Implement automated PR commenting workflow
-  - [ ] Create PR status badges and visual indicators
+## Phase 6: Workflow Integration & User Experience (Marketplace Action)
+
+Note: This project delivers a reusable GitHub Marketplace Action (composite action) defined by `action.yml`. Phase 6 tasks focus on how consumers use this Action within their own workflows, not on creating a repository-specific workflow here.
+
+**Key References**:
+- Consumer integration: [example-workflow.yml](dev-artifacts/example-workflow.yml)
+- Development workflow: [feature-flag-sync.yml](dev-artifacts/feature-flag-sync.yml) 
+- API patterns: [example-api-requests-responses.md](dev-artifacts/example-api-requests-responses.md)
+- Distribution strategy: [packaging-strategy.md](dev-artifacts/packaging-strategy.md)
+- DONE: Implement workflow dispatch with operation choices (cleanup, audit)
+  - [x] Configure workflow_dispatch inputs in GitHub Actions
+  - [x] Add operation type selection (cleanup, audit)
+  - [x] Implement operation-specific execution paths
+  - [x] Create operation validation and safety checks
+  - [x] Add operation result reporting and notifications
+- DONE: Add PR comment integration for synchronization visibility
+  - [x] Implement actions/github-script@v7 integration
+  - [x] Create PR summary report generation (reports/pr-summary.md)
+  - [x] Add flag change impact analysis for PRs
+  - [x] Implement automated PR commenting workflow
+  - [x] Create PR status badges and visual indicators
 - TODO: Create artifact upload for reports and audit trails
   - [ ] Configure actions/upload-artifact@v3 step
   - [ ] Create reports/ directory structure

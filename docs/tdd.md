@@ -1,15 +1,17 @@
-# Technical Design Document: Feature Flag Synchronization Solution
+# Technical Design Document: Feature Flag Synchronization GitHub Action
 
 ## Executive Summary
 
-This Technical Design Document outlines the implementation of a GitHub Actions-based feature flag synchronization solution using Deno 2 and TypeScript. The solution addresses automated cleanup of unused feature flags to prevent feature flag debt and maintain clean Optimizely configurations.
+This Technical Design Document outlines the implementation of a **GitHub Marketplace Action** for feature flag synchronization using Deno 2 and TypeScript. This Action will be published to the GitHub Marketplace for consumption by other repositories, providing automated cleanup of unused feature flags to prevent feature flag debt and maintain clean Optimizely configurations.
 
 ### Key Technical Decisions
 
-- **Runtime**: Deno 2 for secure, modern TypeScript execution
-- **CI/CD Platform**: GitHub Actions for seamless repository integration
+- **Product Type**: GitHub Marketplace Action (composite action) for broad ecosystem adoption
+- **Runtime**: Deno 2 for secure, modern TypeScript execution within the action
+- **Distribution**: GitHub Marketplace for easy consumption via `uses: optimizely/feature-flag-sync-action@v1`
 - **Language**: TypeScript for type safety and developer experience
-- **Architecture**: Modular script-based approach for maintainability and testability
+- **Architecture**: Composite action with modular TypeScript core for maintainability and testability
+- **Consumer Integration**: Workflows use the action via standard GitHub Actions syntax with inputs
 - **Flag Cleanup Strategy**: Prioritize Optimizely-first approach for identifying and removing unused flags (see "Flag Cleanup Strategy" below)
 
 ## Architecture Overview
@@ -52,11 +54,12 @@ flowchart TB
 
 ### Component Overview
 
-1. **GitHub Actions Workflow**: Orchestrates execution across different trigger events
-2. **Code Analysis Module**: Scans repository for feature flag references
+1. **GitHub Marketplace Action** (`action.yml`): Composite action definition with inputs, outputs, and orchestrated steps
+2. **Code Analysis Module**: Scans consumer repository for feature flag references
 3. **Flag Sync Core Module**: Manages feature flag lifecycle operations
 4. **Optimizely API Client**: Manages all API interactions with rate limiting and retries
-5. **Audit and Reporting Module**: Provides comprehensive logging and reporting
+5. **Audit and Reporting Module**: Provides comprehensive logging, reporting, and PR commenting
+6. **Consumer Workflows**: Client repositories consume the action via `uses: optimizely/feature-flag-sync-action@v1`
 
 ## Project Structure and Dependencies
 
@@ -136,6 +139,8 @@ src/
 
 **Purpose**: Manage all interactions with Optimizely APIs with enterprise-grade reliability
 
+**API Examples**: See [example-api-requests-responses.md](dev-artifacts/example-api-requests-responses.md) for detailed API request/response patterns and error handling scenarios.
+
 **Key Features**:
 - Rate limiting and retry logic with exponential backoff
 - Authentication management and token validation
@@ -160,6 +165,10 @@ Core data structures for feature flag synchronization and code analysis.
 ## Implementation Details
 
 ### GitHub Actions Workflow Example
+
+**Consumer Integration**: See [example-workflow.yml](dev-artifacts/example-workflow.yml) for how clients would integrate this Action into their repositories.
+
+**Internal Development**: See [feature-flag-sync.yml](dev-artifacts/feature-flag-sync.yml) for development and testing workflow patterns.
 
 ```yaml
 # .github/workflows/feature-flag-sync.yml
@@ -345,6 +354,10 @@ To ensure a lean and accurate Optimizely configuration, this solution prioritize
 - **False positives**: Code search should exclude comments, test fixtures, and documentation to avoid mistakenly keeping unused flags.
 - **Dynamic usage**: If the codebase uses dynamic flag keys, developer guidelines or code annotations should be used to help the tool catch these cases.
 - **Audit and reporting**: All archival actions should be logged and reported for compliance and review.
+
+## Distribution and Packaging
+
+**Marketplace Strategy**: See [packaging-strategy.md](dev-artifacts/packaging-strategy.md) for detailed information about GitHub Marketplace distribution, versioning, and release management.
 
 **LEGAL NOTICE**: This document and all artifacts related to and including a final deployed solution are for illustrative purposes and are not officially supported by Optimizely nor any other entity. The solution is a conceptual framework designed to illustrate the potential benefits and implementation strategies for automated feature flag management.
 
