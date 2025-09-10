@@ -24,6 +24,7 @@ applyTo: '**/*.{ts,tsx}'
 - Use proper TypeScript types and interfaces; define custom types when needed
 - `type` is preferred for defining types, while `interface` is preferred for defining object shapes
 - Implement proper null/undefined checks with optional chaining (`?.`) and nullish coalescing (`??`)
+- Try to avoid the use of `!.` (non-null assertion operator)
 - Use type guards and discriminated unions for runtime type safety
 - Leverage utility types (`Partial<T>`, `Pick<T>`, `Omit<T>`, etc.) for type transformations
 - Use `const assertions` for immutable data structures
