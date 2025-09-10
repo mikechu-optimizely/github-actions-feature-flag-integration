@@ -1,0 +1,112 @@
+{
+  "version": "1.0.0",
+  "description": "Manual override configuration for feature flag cleanup operations",
+  "organizationId": "feature-flag-sync-action",
+  "overrideConfig": {
+    "exclusionLists": {
+      "permanentExclusions": [
+        {
+          "flagKey": "legacy_authentication_flag",
+          "reason": "Critical legacy flag - never archive without manual review",
+          "addedBy": "system-admin",
+          "addedAt": "2024-01-01T00:00:00Z",
+          "expiresAt": null,
+          "tags": ["legacy", "critical", "auth"]
+        },
+        {
+          "flagKey": "maintenance_mode_*",
+          "reason": "Infrastructure flags for maintenance operations",
+          "addedBy": "devops-team",
+          "addedAt": "2024-01-01T00:00:00Z",
+          "expiresAt": null,
+          "tags": ["infrastructure", "ops"],
+          "isPattern": true
+        }
+      ],
+      "temporaryExclusions": [
+        {
+          "flagKey": "new_feature_rollout",
+          "reason": "Under active development - exclude until 2024-03-01",
+          "addedBy": "product-team",
+          "addedAt": "2024-01-15T00:00:00Z",
+          "expiresAt": "2024-03-01T00:00:00Z",
+          "tags": ["development", "rollout"]
+        }
+      ],
+      "patternExclusions": [
+        {
+          "pattern": "^test_.*",
+          "reason": "All test flags - require manual review before archiving",
+          "addedBy": "qa-team",
+          "addedAt": "2024-01-01T00:00:00Z",
+          "expiresAt": null,
+          "tags": ["testing", "qa"]
+        },
+        {
+          "pattern": ".*_emergency_.*",
+          "reason": "Emergency flags pattern - never auto-archive",
+          "addedBy": "incident-response",
+          "addedAt": "2024-01-01T00:00:00Z",
+          "expiresAt": null,
+          "tags": ["emergency", "incident"]
+        }
+      ]
+    },
+    "approvalWorkflows": {
+      "criticalFlagThresholds": {
+        "ageInDays": 365,
+        "usageThreshold": 1000000,
+        "riskLevel": "high"
+      },
+      "approvalRequired": [
+        {
+          "flagKey": "payment_processor_*",
+          "approvalType": "manual",
+          "approvers": ["@payments-team", "@security-team"],
+          "requiresAllApprovers": true,
+          "reason": "Payment-related flags require dual approval",
+          "tags": ["payment", "security", "critical"]
+        },
+        {
+          "flagKey": "user_data_*",
+          "approvalType": "manual",
+          "approvers": ["@privacy-team", "@legal-team"],
+          "requiresAllApprovers": false,
+          "reason": "User data flags require privacy review",
+          "tags": ["privacy", "user-data", "legal"]
+        }
+      ],
+      "emergencyBypass": {
+        "enabled": true,
+        "bypassUsers": ["@incident-commander", "@cto"],
+        "auditRequired": true,
+        "postBypassActions": ["create-issue", "notify-team", "schedule-review"]
+      }
+    },
+    "emergencyControls": {
+      "stopWords": ["EMERGENCY_STOP", "HALT_CLEANUP", "ROLLBACK_NOW"],
+      "rollbackConfig": {
+        "maxRollbackWindow": "24h",
+        "requiresApproval": true,
+        "autoRollbackTriggers": ["api-error-rate-spike", "flag-validation-failure"],
+        "rollbackNotifications": ["@devops-team", "@on-call"]
+      }
+    }
+  },
+  "validation": {
+    "schemaVersion": "1.0.0",
+    "requiredFields": ["flagKey", "reason", "addedBy", "addedAt"],
+    "maxExclusionAge": "P1Y",
+    "allowedTags": ["critical", "legacy", "development", "testing", "security", "privacy", "payment", "infrastructure", "ops", "emergency", "incident", "qa", "rollout", "user-data", "legal"]
+  },
+  "metadata": {
+    "createdBy": "override-config-manager",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0",
+    "lastUpdated": "2024-01-01T00:00:00Z",
+    "updatedBy": "override-config-manager",
+    "repository": "feature-flag-sync-action",
+    "branch": "main",
+    "configPath": ".github/optimizely/overrides.json"
+  }
+}
