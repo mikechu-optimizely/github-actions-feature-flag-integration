@@ -1,4 +1,4 @@
-import { parseArgs } from "jsr:@std/cli/parse-args";
+import { parseArgs } from "@std/cli/parse-args";
 import { loadEnvironment } from "./config/environment.ts";
 import { OptimizelyApiClient } from "./modules/optimizely-client.ts";
 import { findFlagUsagesInCodebase } from "./modules/code-analysis.ts";
@@ -10,6 +10,7 @@ import { debug, error, info } from "./utils/logger.ts";
 import { validateInputs } from "./utils/validation.ts";
 import { OptimizelyFlag } from "./types/optimizely.ts";
 import { FlagUsageReport } from "./modules/flag-usage-reporter.ts";
+import { emergencyControlManager, EmergencyStopReason } from "./utils/emergency-control-manager.ts";
 
 /**
  * Main configuration interface for the application.
@@ -17,7 +18,7 @@ import { FlagUsageReport } from "./modules/flag-usage-reporter.ts";
 interface MainConfig {
   workspaceRoot: string;
   environment: string;
-  operation: "cleanup" | "audit";
+  operation: "cleanup" | "audit" | "emergency-stop" | "clear-emergency" | "rollback";
   dryRun: boolean;
   executionId: string;
   reportsPath: string;
@@ -32,6 +33,30 @@ async function main(): Promise<void> {
 
     // Parse command line arguments and load environment
     const config = await parseConfiguration();
+
+    // Handle emergency operations first
+    if (config.operation === "emergency-stop") {
+      await handleEmergencyStop();
+      return;
+    }
+    if (config.operation === "clear-emergency") {
+      handleClearEmergency();
+      return;
+    }
+    if (config.operation === "rollback") {
+      await handleRollback();
+      return;
+    }
+
+    // Check for emergency conditions before starting normal operations
+    if (emergencyControlManager.isEmergencyStopActive()) {
+      const state = emergencyControlManager.getEmergencyState();
+      error(`🚨 EMERGENCY STOP IS ACTIVE - Operation halted`);
+      error(`Stop reason: ${state.stopReason}`);
+      error(`Initiated by: ${state.stopInitiatedBy}`);
+      error(`Use 'deno run --allow-all src/main.ts --operation clear-emergency' to clear`);
+      Deno.exit(1);
+    }
 
     // Log execution start with dry-run indication
     const startMessage = config.dryRun
@@ -129,7 +154,10 @@ async function parseConfiguration(): Promise<MainConfig> {
     environment: args.environment || env.ENVIRONMENT || "auto",
     operation: (args.operation || env.OPERATION || "cleanup") as
       | "cleanup"
-      | "audit",
+      | "audit"
+      | "emergency-stop"
+      | "clear-emergency"
+      | "rollback",
     dryRun: args["dry-run"] ?? env.DRY_RUN,
     executionId: env.GITHUB_RUN_ID || crypto.randomUUID(),
     reportsPath: args["reports-path"] || env.REPORTS_PATH || "reports",
@@ -825,7 +853,79 @@ EXAMPLES:
 
   # Cleanup unused flags
   deno run --allow-all src/main.ts --operation cleanup --no-dry-run
+
+  # Emergency operations
+  deno run --allow-all src/main.ts --operation emergency-stop
+  deno run --allow-all src/main.ts --operation clear-emergency
+  deno run --allow-all src/main.ts --operation rollback
 `);
+}
+
+/**
+ * Handles emergency stop operation.
+ */
+async function handleEmergencyStop(): Promise<void> {
+  info("🚨 Triggering emergency stop...");
+
+  const reason = EmergencyStopReason.USER_INITIATED;
+  const initiatedBy = Deno.env.get("GITHUB_ACTOR") || "cli-user";
+
+  await emergencyControlManager.triggerEmergencyStop(reason, initiatedBy);
+
+  info("✅ Emergency stop activated successfully");
+  info("Use 'deno run --allow-all src/main.ts --operation clear-emergency' to clear when ready");
+}
+
+/**
+ * Handles clearing emergency stop state.
+ */
+function handleClearEmergency(): void {
+  if (!emergencyControlManager.isEmergencyStopActive()) {
+    info("ℹ️  No emergency stop is currently active");
+    return;
+  }
+
+  info("🔧 Clearing emergency stop...");
+
+  const clearedBy = Deno.env.get("GITHUB_ACTOR") || "cli-user";
+  emergencyControlManager.clearEmergencyStop(clearedBy);
+
+  info("✅ Emergency stop cleared successfully");
+  info("Normal operations can now resume");
+}
+
+/**
+ * Handles rollback operation.
+ */
+async function handleRollback(): Promise<void> {
+  info("🔄 Executing rollback operations...");
+
+  const state = emergencyControlManager.getEmergencyState();
+  if (state.rollbackOperations.size === 0) {
+    info("ℹ️  No rollback operations are available");
+    return;
+  }
+
+  info(`Found ${state.rollbackOperations.size} rollback operations`);
+
+  try {
+    const result = await emergencyControlManager.executeRollback();
+
+    info("📊 Rollback Results:");
+    info(`  - Total operations: ${result.totalOperations}`);
+    info(`  - Successful: ${result.successful}`);
+    info(`  - Failed: ${result.failed}`);
+    info(`  - Skipped: ${result.skipped}`);
+
+    if (result.failed > 0) {
+      error("⚠️  Some rollback operations failed. Check logs for details.");
+    } else {
+      info("✅ All rollback operations completed successfully");
+    }
+  } catch (err) {
+    error(`❌ Rollback execution failed: ${err instanceof Error ? err.message : String(err)}`);
+    Deno.exit(1);
+  }
 }
 
 // Execute main function if this is the main module

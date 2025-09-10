@@ -4,7 +4,7 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
-import { beforeEach, describe, it } from "jsr:@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 
 import {
   ConsistencyValidator,
