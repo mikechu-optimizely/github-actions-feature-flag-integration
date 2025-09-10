@@ -18,6 +18,8 @@ export async function tryCatch<T, E = Error>(
     const data = await promise;
     return { data, error: null };
   } catch (error) {
-    return { data: null, error: error as E };
+    // Ensure error is properly converted to Error instance for type safety
+    const errorInstance = error instanceof Error ? error : new Error(String(error));
+    return { data: null, error: errorInstance as E };
   }
 }
