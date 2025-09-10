@@ -1,4 +1,4 @@
-import { parseArgs } from "https://deno.land/std@0.224.0/cli/parse_args.ts";
+import { parseArgs } from "jsr:@std/cli/parse-args";
 import { loadEnvironment } from "./config/environment.ts";
 import { OptimizelyApiClient } from "./modules/optimizely-client.ts";
 import { findFlagUsagesInCodebase } from "./modules/code-analysis.ts";

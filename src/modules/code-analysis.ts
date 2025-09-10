@@ -1,5 +1,5 @@
-import { extname, globToRegExp, join } from "https://deno.land/std@0.224.0/path/mod.ts";
-import { exists } from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { extname, globToRegExp, join } from "@std/path";
+import { exists } from "@std/fs";
 import { CodeAnalysisConfig } from "../types/config.ts";
 
 /**

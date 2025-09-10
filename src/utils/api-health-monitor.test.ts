@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { assert, assertEquals } from "@std/assert";
 import { ApiHealthMonitor, createHttpHealthCheck, HealthStatus } from "./api-health-monitor.ts";
 
 Deno.test("ApiHealthMonitor - Initial state should be UNKNOWN", () => {

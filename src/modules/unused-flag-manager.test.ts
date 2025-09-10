@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import {
   UnusedFlagManager,
   UnusedFlagManagerConfig,

@@ -1,5 +1,5 @@
-import { dirname, join } from "https://deno.land/std@0.224.0/path/mod.ts";
-import { exists } from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { dirname, join } from "@std/path";
+import { exists } from "@std/fs";
 
 /**
  * Enhanced pattern definition with metadata.

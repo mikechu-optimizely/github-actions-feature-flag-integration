@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { assertEquals, assertRejects } from "@std/assert";
 import { CircuitBreaker, CircuitBreakerState, isApiErrorCritical } from "./circuit-breaker.ts";
 
 Deno.test("CircuitBreaker - Initial state should be CLOSED", () => {
