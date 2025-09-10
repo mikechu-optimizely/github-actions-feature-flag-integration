@@ -23,7 +23,7 @@
 2. **Clone the Repository**
    ```sh
    git clone <your-repo-url>
-   cd github-actions-feature-flag-integration
+   cd feature-flag-sync-action
    ```
 
 3. **Install VS Code Extensions**

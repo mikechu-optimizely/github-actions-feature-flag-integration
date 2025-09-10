@@ -41,8 +41,8 @@ Before contributing, ensure you have:
 
 1. **Fork and Clone**
    ```bash
-   git clone https://github.com/your-username/github-actions-feature-flag-integration.git
-   cd github-actions-feature-flag-integration
+   git clone https://github.com/optimizely/feature-flag-sync-action.git
+   cd feature-flag-sync-action
    ```
 
 2. **Install Development Tools**

@@ -1,6 +1,6 @@
 # Optimizely Feature Flag Sync Action - Development Repository
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/mikechu-optimizely/github-actions-feature-flag-integration)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/optimizely/feature-flag-sync-action)
 [![Deno Version](https://img.shields.io/badge/Deno-2.x-blue.svg)](https://deno.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
@@ -55,8 +55,8 @@ The published action will provide:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mikechu-optimizely/github-actions-feature-flag-integration.git
-   cd github-actions-feature-flag-integration
+   git clone https://github.com/optimizely/feature-flag-sync-action.git
+   cd feature-flag-sync-action
    ```
 
 2. **Setup environment variables** (for testing)
