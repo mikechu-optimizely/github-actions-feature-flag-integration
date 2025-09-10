@@ -64,8 +64,7 @@ export class EmergencyControlManager {
   private repository: string | undefined;
 
   constructor() {
-    this.githubToken = Deno.env.get("GITHUB_TOKEN");
-    this.repository = Deno.env.get("GITHUB_REPOSITORY");
+    // Lazy initialization of environment variables to avoid requiring permissions at module load
   }
 
   /**
@@ -347,7 +346,17 @@ export class EmergencyControlManager {
   }
 
   /**
-   * Sends emergency notifications to configured channels.
+   * Lazily initializes GitHub configuration if not already set.
+   */
+  private initializeGitHubConfig(): void {
+    if (this.githubToken === undefined) {
+      this.githubToken = Deno.env.get("GITHUB_TOKEN");
+      this.repository = Deno.env.get("GITHUB_REPOSITORY");
+    }
+  }
+
+  /**
+   * Sends emergency notifications via configured channels.
    */
   private async sendEmergencyNotifications(): Promise<void> {
     if (this.emergencyState.emergencyNotificationsSent) {
@@ -380,9 +389,11 @@ export class EmergencyControlManager {
   }
 
   /**
-   * Creates a GitHub issue for the emergency stop.
+   * Creates an emergency GitHub issue if configured.
    */
   private async createEmergencyIssue(): Promise<void> {
+    this.initializeGitHubConfig();
+
     if (!this.githubToken || !this.repository) {
       logger.warn("GitHub token or repository not configured, skipping emergency issue creation");
       return;

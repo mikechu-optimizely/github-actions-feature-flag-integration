@@ -55,8 +55,17 @@ export class ApprovalWorkflowManager {
   private repository: string | undefined;
 
   constructor() {
-    this.githubToken = Deno.env.get("GITHUB_TOKEN");
-    this.repository = Deno.env.get("GITHUB_REPOSITORY");
+    // Lazy initialization of environment variables to avoid requiring permissions at module load
+  }
+
+  /**
+   * Lazily initializes GitHub configuration if not already set.
+   */
+  private initializeGitHubConfig(): void {
+    if (this.githubToken === undefined) {
+      this.githubToken = Deno.env.get("GITHUB_TOKEN");
+      this.repository = Deno.env.get("GITHUB_REPOSITORY");
+    }
   }
 
   /**
@@ -274,6 +283,8 @@ export class ApprovalWorkflowManager {
    * Creates GitHub issue for approval workflow.
    */
   private async createApprovalIssue(request: ApprovalRequest): Promise<void> {
+    this.initializeGitHubConfig();
+
     if (!this.githubToken || !this.repository) {
       logger.warn("GitHub token or repository not configured, skipping issue creation");
       return;
@@ -362,6 +373,7 @@ This flag has been identified as potentially unused in the codebase and is being
    * Checks if the approval rule should create a GitHub issue.
    */
   private shouldCreateGitHubIssue(rule: ApprovalRule): boolean {
+    this.initializeGitHubConfig();
     return rule.approvalType === "manual" && !!this.githubToken && !!this.repository;
   }
 
