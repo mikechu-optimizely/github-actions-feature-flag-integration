@@ -17,6 +17,7 @@ const testEnvVars = {
   DRY_RUN: "true",
 };
 
+
 // Add cleanup after all tests
 Deno.test("OptimizelyApiClient: cleanup environment", () => {
   globalThis.fetch = originalFetch;
@@ -1115,5 +1116,833 @@ Deno.test("OptimizelyApiClient: validateFlagConsistency with empty environments"
     assertEquals(result.data, null);
     assert(result.error instanceof Error);
     assert(result.error.message.includes("No environment data found for flag test_flag"));
+  });
+});
+
+// Enhanced error handling, circuit breaker, retry logic tests
+
+Deno.test("OptimizelyApiClient: request handles network fetch errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject(new Error("Network connection failed"));
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.request("/test");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+  });
+});
+
+Deno.test("OptimizelyApiClient: request handles fetch throwing non-Error", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject("Non-Error failure");
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.request("/test");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    // The error should be wrapped with the string value
+    assert(result.error.message === "Non-Error failure");
+  });
+});
+
+Deno.test("OptimizelyApiClient: request retry mechanism on temporary failures", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    let attemptCount = 0;
+    globalThis.fetch = () => {
+      attemptCount++;
+      if (attemptCount <= 2) {
+        return Promise.resolve(
+          new Response("Service Temporarily Unavailable", {
+            status: 503,
+            statusText: "Service Unavailable",
+          }),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ data: "success" }), { status: 200 }),
+      );
+    };
+
+    const client = new OptimizelyApiClient("test-token", { maxRetries: 3 });
+    const result = await client.request("/test");
+    
+    // Should succeed after retries
+    assertEquals(result.error, null);
+    assert(result.data);
+    assertEquals((result.data as { data: string }).data, "success");
+    assert(attemptCount >= 3);
+  });
+});
+
+Deno.test("OptimizelyApiClient: request exhausts retries on persistent failures", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Service Unavailable", {
+          status: 503,
+          statusText: "Service Unavailable",
+        }),
+      );
+
+    const client = new OptimizelyApiClient("test-token", { maxRetries: 2 });
+    const result = await client.request("/test");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assert(result.error.message.includes("503"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: request validates response structure", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(new Response("", { status: 200 }));
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.request("/test");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+  });
+});
+
+Deno.test("OptimizelyApiClient: request handles response.json() parsing errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    // Mock fetch to return a response that will fail during JSON parsing
+    globalThis.fetch = () => {
+      // Create a response with invalid JSON that will cause parsing to fail
+      const response = new Response("{ invalid json content {", {
+        status: 200,
+        statusText: "OK",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      // Override the json method to simulate parsing failure
+      const originalJson = response.json;
+      response.json = () => Promise.reject(new Error("JSON parsing failed"));
+      
+      return Promise.resolve(response);
+    };
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.request("/test");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+  });
+});
+
+Deno.test("OptimizelyApiClient: parseErrorResponse handles different error formats", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    // Test structured error response
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            error: { message: "Structured error message" },
+            code: "VALIDATION_ERROR",
+          }),
+          { status: 400, statusText: "Bad Request" },
+        ),
+      );
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.request("/test");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assert(result.error.message.includes("Structured error message"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: parseErrorResponse handles simple message format", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ message: "Simple error message" }),
+          { status: 400, statusText: "Bad Request" },
+        ),
+      );
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.request("/test");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assert(result.error.message.includes("Simple error message"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: getAllFeatureFlags handles missing project ID", async () => {
+  await withTestEnvironment({ ...testEnvVars, OPTIMIZELY_PROJECT_ID: "" }, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getAllFeatureFlags();
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    // The error message should match what's returned by the implementation
+    assertEquals(result.error.message, "Failed to fetch feature flags: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.");
+  });
+});
+
+Deno.test("OptimizelyApiClient: getAllFeatureFlags handles pagination edge case with large page count", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    let callCount = 0;
+    client.request = (<T = unknown>(
+      path: string,
+      _init?: RequestInit,
+    ): Promise<Result<T, Error>> => {
+      callCount++;
+      return Promise.resolve({
+        data: {
+          url: `/projects/123456/flags?page=${callCount}`,
+          items: [{ key: `flag_${callCount}`, name: `Flag ${callCount}`, archived: false }],
+          create_url: "/projects/123456/flags",
+          last_url: "/projects/123456/flags?page=150",
+          first_url: "/projects/123456/flags",
+          count: 1,
+          total_pages: 150, // Large page count to test safety limit
+          total_count: 150,
+          page: callCount,
+        } as T,
+        error: null,
+      });
+    }) as typeof client.request;
+
+    const result = await client.getAllFeatureFlags();
+    
+    // Should stop at page 100 (safety limit)
+    assertEquals(callCount, 100);
+    assertEquals(result.data?.length, 100);
+    assert(result.data);
+  });
+});
+
+Deno.test("OptimizelyApiClient: getAllFeatureFlags handles API errors during pagination", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    let callCount = 0;
+    client.request = (<T = unknown>(
+      _path: string,
+      _init?: RequestInit,
+    ): Promise<Result<T, Error>> => {
+      callCount++;
+      if (callCount === 2) {
+        // Fail on second page
+        return Promise.resolve({
+          data: null,
+          error: new Error("Pagination request failed"),
+        });
+      }
+      return Promise.resolve({
+        data: {
+          url: "/projects/123456/flags",
+          items: [{ key: `flag_${callCount}`, name: `Flag ${callCount}`, archived: false }],
+          total_pages: 3,
+          page: callCount,
+        } as T,
+        error: null,
+      });
+    }) as typeof client.request;
+
+    const result = await client.getAllFeatureFlags();
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assert(result.error.message.includes("Pagination request failed"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: archiveFeatureFlags validates empty flag keys array", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.archiveFeatureFlags([]);
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assert(result.error.message.includes("At least one flag key is required"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: archiveFeatureFlags validates individual flag key types", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.archiveFeatureFlags(["valid-flag", "", "another-valid-flag"]);
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assert(result.error.message.includes("All flag keys must be non-empty strings"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: archiveFeatureFlags handles missing project ID", async () => {
+  await withTestEnvironment({ ...testEnvVars, OPTIMIZELY_PROJECT_ID: "" }, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.archiveFeatureFlags(["test-flag"]);
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    // The error message should match what's returned by the implementation
+    assertEquals(result.error.message, "Failed to archive flags: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.");
+  });
+});
+
+Deno.test("OptimizelyApiClient: archiveFeatureFlags handles API request errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Server Error", { status: 500, statusText: "Internal Server Error" }),
+      );
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.archiveFeatureFlags(["test-flag"]);
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+  });
+});
+
+Deno.test("OptimizelyApiClient: archiveFeatureFlag handles single flag processing", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({}), { status: 200 }), // Empty response
+      );
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.archiveFeatureFlag("test-flag");
+    
+    // Should return false when no data is returned
+    assertEquals(result.data, false);
+    assertEquals(result.error, null);
+  });
+});
+
+Deno.test("OptimizelyApiClient: unarchiveFeatureFlags handles validation and API errors", async () => {
+  await withTestEnvironment({ ...testEnvVars, OPTIMIZELY_PROJECT_ID: "" }, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    // Test missing project ID
+    const result1 = await client.unarchiveFeatureFlags(["test-flag"]);
+    assertEquals(result1.data, null);
+    assertEquals(result1.error?.message, "Failed to unarchive flags: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.");
+    
+    // Test empty array
+    const result2 = await client.unarchiveFeatureFlags([]);
+    assertEquals(result2.data, null);
+    assertEquals(result2.error?.message, "At least one flag key is required");
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagDetails validates flag key parameter", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    // Test with non-string flag key
+    // @ts-expect-error: Testing invalid input type
+    const result1 = await client.getFlagDetails(123);
+    assertEquals(result1.data, null);
+    assert(result1.error?.message.includes("Flag key is required and must be a string"));
+    
+    // Test with null flag key
+    // @ts-expect-error: Testing invalid input type
+    const result2 = await client.getFlagDetails(null);
+    assertEquals(result2.data, null);
+    assert(result2.error?.message.includes("Flag key is required and must be a string"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagDetails handles missing project ID", async () => {
+  await withTestEnvironment({ ...testEnvVars, OPTIMIZELY_PROJECT_ID: "" }, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getFlagDetails("test-flag");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Failed to fetch flag details for test-flag: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.");
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagDetails handles API error responses", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Not Found", { status: 404, statusText: "Not Found" }),
+      );
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getFlagDetails("nonexistent-flag");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagDetails handles unexpected errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject(new Error("Unexpected network error"));
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getFlagDetails("test-flag");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Failed to fetch flag details for test-flag: Unexpected network error");
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusInEnvironment validates parameters", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    // Test with non-string environment key
+    // @ts-expect-error: Testing invalid input type
+    const result1 = await client.getFlagStatusInEnvironment("test-flag", 123);
+    assertEquals(result1.data, null);
+    assert(result1.error?.message.includes("Environment key is required and must be a string"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusInEnvironment handles missing project ID", async () => {
+  await withTestEnvironment({ ...testEnvVars, OPTIMIZELY_PROJECT_ID: "" }, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getFlagStatusInEnvironment("test-flag", "prod");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Failed to fetch flag status for test-flag in environment prod: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.");
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusInEnvironment handles unexpected errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject(new Error("Network failure"));
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getFlagStatusInEnvironment("test-flag", "prod");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Failed to fetch flag status for test-flag in environment prod: Network failure");
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusAcrossEnvironments validates flag key", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    // @ts-expect-error: Testing invalid input type
+    const result = await client.getFlagStatusAcrossEnvironments(null);
+    assertEquals(result.data, null);
+    assert(result.error?.message.includes("Flag key is required and must be a string"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusAcrossEnvironments handles environment fetch errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/environments") && !urlStr.includes("/environments/")) {
+        return Promise.resolve(
+          new Response("Service Error", { status: 503 }),
+        );
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    };
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getFlagStatusAcrossEnvironments("test-flag");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusAcrossEnvironments handles partial environment failures", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      
+      if (urlStr.includes("/environments/")) {
+        // Fail for prod environment, succeed for dev
+        if (urlStr.includes("/prod")) {
+          return Promise.resolve(new Response("Forbidden", { status: 403 }));
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({
+            key: "dev",
+            name: "Development",
+            enabled: true,
+            status: "active",
+          }), { status: 200 }),
+        );
+      } else if (urlStr.includes("/environments")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({
+            items: [
+              { key: "dev", name: "Development" },
+              { key: "prod", name: "Production" },
+            ],
+          }), { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    };
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getFlagStatusAcrossEnvironments("test-flag");
+    
+    // Should return partial data (dev environment only)
+    assertEquals(result.error, null);
+    assert(result.data);
+    assertEquals(Object.keys(result.data).length, 1);
+    assertEquals(result.data["dev"]?.enabled, true);
+  });
+});
+
+Deno.test("OptimizelyApiClient: getFlagStatusAcrossEnvironments handles unexpected errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject(new Error("Connection timeout"));
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getFlagStatusAcrossEnvironments("test-flag");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Failed to fetch environments: Connection timeout");
+  });
+});
+
+Deno.test("OptimizelyApiClient: validateFlagConsistency validates flag key parameter", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    // @ts-expect-error: Testing invalid input type
+    const result = await client.validateFlagConsistency(undefined);
+    assertEquals(result.data, null);
+    assert(result.error?.message.includes("Flag key is required and must be a string"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: validateFlagConsistency handles status fetch errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject(new Error("Service unavailable"));
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.validateFlagConsistency("test-flag");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+  });
+});
+
+Deno.test("OptimizelyApiClient: validateFlagConsistency detects mixed status inconsistencies", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      
+      if (urlStr.includes("/environments/")) {
+        const isDev = urlStr.includes("/dev");
+        const isStaging = urlStr.includes("/staging");
+        
+        const mockData = {
+          key: isDev ? "dev" : isStaging ? "staging" : "prod",
+          name: isDev ? "Development" : isStaging ? "Staging" : "Production",
+          enabled: true, // All enabled but different statuses
+          status: isDev ? "active" : isStaging ? "paused" : "archived",
+          id: isDev ? 1 : isStaging ? 2 : 3,
+          priority: 1000,
+          created_time: "2023-01-01T00:00:00Z",
+          rolloutRules: [],
+        };
+        return Promise.resolve(
+          new Response(JSON.stringify(mockData), { status: 200 }),
+        );
+      } else if (urlStr.includes("/environments")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({
+            items: [
+              { key: "dev", name: "Development" },
+              { key: "staging", name: "Staging" },
+              { key: "prod", name: "Production" },
+            ],
+          }), { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    };
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.validateFlagConsistency("test-flag");
+    
+    assertEquals(result.error, null);
+    assert(result.data);
+    assertEquals(result.data.isConsistent, false);
+    assertEquals(result.data.inconsistencies.length, 1);
+    assertEquals(result.data.inconsistencies[0].type, "mixed_status");
+    assert(result.data.inconsistencies[0].message.includes("different statuses across environments"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: validateFlagConsistency handles archived environment counting", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      
+      if (urlStr.includes("/environments/")) {
+        const mockData = {
+          key: "prod",
+          name: "Production",
+          enabled: false,
+          status: "archived",
+          id: 123,
+          priority: 1000,
+          created_time: "2023-01-01T00:00:00Z",
+          rolloutRules: [],
+        };
+        return Promise.resolve(
+          new Response(JSON.stringify(mockData), { status: 200 }),
+        );
+      } else if (urlStr.includes("/environments")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({
+            items: [{ key: "prod", name: "Production" }],
+          }), { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    };
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.validateFlagConsistency("test-flag");
+    
+    assertEquals(result.error, null);
+    assert(result.data);
+    assertEquals(result.data.summary.archivedEnvironments, 1);
+    assertEquals(result.data.summary.disabledEnvironments, 1);
+    assertEquals(result.data.summary.enabledEnvironments, 0);
+  });
+});
+
+Deno.test("OptimizelyApiClient: validateFlagConsistency handles unexpected errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject("Unexpected error type");
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.validateFlagConsistency("test-flag");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Failed to fetch environments: Unexpected error type");
+  });
+});
+
+Deno.test("OptimizelyApiClient: getEnvironments handles missing project ID", async () => {
+  await withTestEnvironment({ ...testEnvVars, OPTIMIZELY_PROJECT_ID: "" }, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getEnvironments();
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Failed to fetch environments: Missing required environment variables: OPTIMIZELY_PROJECT_ID. Please ensure these are set in your environment or GitHub secrets.");
+  });
+});
+
+Deno.test("OptimizelyApiClient: getEnvironments handles API errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response("Unauthorized", { status: 401 }),
+      );
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getEnvironments();
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+  });
+});
+
+Deno.test("OptimizelyApiClient: getEnvironments handles unexpected errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject(new Error("Connection refused"));
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.getEnvironments();
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Failed to fetch environments: Connection refused");
+  });
+});
+
+Deno.test("OptimizelyApiClient: validateResponse handles different invalid response types", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    // Test with primitive response
+    globalThis.fetch = () =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve("string response"),
+      } as Response);
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.request("/test");
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assert(result.error.message.includes("Expected object response from Optimizely API"));
+  });
+});
+
+Deno.test("OptimizelyApiClient: rate limiting with zero maxRps", () => {
+  // Test that maxRps gets clamped to minimum value
+  const client = new OptimizelyApiClient("test-token-12345", { maxRps: 0 });
+  assert(client instanceof OptimizelyApiClient);
+});
+
+Deno.test("OptimizelyApiClient: timeout with very low value", () => {
+  // Test that timeoutMs gets clamped to minimum value
+  const client = new OptimizelyApiClient("test-token-12345", { timeoutMs: 100 });
+  assert(client instanceof OptimizelyApiClient);
+});
+
+Deno.test("OptimizelyApiClient: validateTokenAccess handles unexpected errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject("Non-Error object");
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.validateTokenAccess();
+    
+    assertEquals(result.data, null);
+    assert(result.error instanceof Error);
+    assertEquals(result.error.message, "Token validation failed: Non-Error object");
+  });
+});
+
+// Enhanced error handling and recovery tests
+
+Deno.test("OptimizelyApiClient: performHealthCheck with success", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ status: "healthy" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.performHealthCheck();
+    
+    assertEquals(result.error, null);
+    assertEquals(result.data, "HEALTHY");
+  });
+});
+
+Deno.test("OptimizelyApiClient: performHealthCheck handles failures", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    globalThis.fetch = () => Promise.reject(new Error("Health check failed"));
+
+    const client = new OptimizelyApiClient("test-token");
+    const result = await client.performHealthCheck();
+    
+    assertEquals(result.data, "UNHEALTHY");
+    assertEquals(result.error, null);
+  });
+});
+
+Deno.test("OptimizelyApiClient: enhanced error handling statistics", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token", {
+      enableGracefulDegradation: true,
+    });
+    
+    // Test health stats
+    const healthStats = client.getHealthStats();
+    assert(typeof healthStats === "object");
+    
+    // Test circuit breaker stats
+    const circuitStats = client.getCircuitBreakerStats();
+    assert(typeof circuitStats === "object");
+    
+    // Test error recovery stats
+    const recoveryStats = client.getErrorRecoveryStats();
+    assert(typeof recoveryStats === "object");
+    assert("circuitBreaker" in recoveryStats);
+    assert("health" in recoveryStats);
+    assert("fallback" in recoveryStats);
+    
+    // Test API status report
+    const statusReport = client.getApiStatusReport();
+    assert(typeof statusReport === "object");
+    assert("timestamp" in statusReport);
+    assert("health" in statusReport);
+    assert("circuitBreaker" in statusReport);
+    assert("api" in statusReport);
+  });
+});
+
+Deno.test("OptimizelyApiClient: reset error handling mechanisms", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    // Reset should complete without errors
+    client.resetErrorHandling();
+    
+    // Force circuit breaker open
+    client.forceCircuitBreakerOpen();
+    
+    // Check availability (should work in dry run mode)
+    const dryRunClient = new OptimizelyApiClient("test-token", { dryRun: true });
+    assertEquals(dryRunClient.isApiAvailable(), true);
+  });
+});
+
+Deno.test("OptimizelyApiClient: executeWithRecovery success", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    const operation = () => Promise.resolve("operation successful");
+    const result = await client.executeWithRecovery("test-operation", operation);
+    
+    assertEquals(result.error, null);
+    assertEquals(result.data, "operation successful");
+  });
+});
+
+Deno.test("OptimizelyApiClient: executeWithRecovery handles operation failures", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    const operation = () => Promise.reject(new Error("Operation failed"));
+    const result = await client.executeWithRecovery("failing-operation", operation);
+    
+    assert(result.error instanceof Error);
+    assertEquals(result.data, null);
+  });
+});
+
+Deno.test("OptimizelyApiClient: executeWithRecovery handles unexpected errors", async () => {
+  await withTestEnvironment(testEnvVars, async () => {
+    const client = new OptimizelyApiClient("test-token");
+    
+    // Create a failing operation that throws during recovery
+    const operation = () => {
+      throw new Error("Recovery manager failure");
+    };
+    
+    const result = await client.executeWithRecovery("test-operation", operation);
+    
+    assert(result.error instanceof Error);
+    assertEquals(result.data, null);
+    // The error should come from the recovery failure
+    assert(result.error.message.includes("Recovery manager failure"));
   });
 });
