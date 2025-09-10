@@ -173,7 +173,7 @@ export class OptimizelyApiClient {
 
       if (result.error) {
         logger.warn("Token validation failed", { error: result.error.message });
-        return { data: null, error: result.error };
+        return { data: null, error: new Error(`Token validation failed: ${result.error.message}`) };
       }
 
       this.tokenValidated = true;
