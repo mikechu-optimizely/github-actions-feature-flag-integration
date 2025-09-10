@@ -1,0 +1,185 @@
+name: 🐛 Bug Report
+description: Create a bug report to help us improve
+title: '[Bug]: '
+labels: ['bug', 'triage']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug! Please provide as much detail as possible to help us reproduce and fix the issue.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Bug Summary
+      description: A clear, concise summary of what the bug is
+      placeholder: "Brief description of the issue"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear description of what you expected to happen
+      placeholder: "What should have happened?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: A clear description of what actually happened
+      placeholder: "What actually happened instead?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: workflow-configuration
+    attributes:
+      label: Workflow Configuration
+      description: Share your workflow YAML configuration (remove any secrets)
+      render: yaml
+      placeholder: |
+        name: Feature Flag Sync
+        on: [push]
+        jobs:
+          sync:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v4
+              - uses: optimizely/feature-flag-sync-action@v1
+                with:
+                  # your configuration here
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Please copy and paste any relevant log output (remove any secrets)
+      render: shell
+      placeholder: "Paste your logs here"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - Ubuntu (GitHub Actions)
+        - macOS (GitHub Actions) 
+        - Windows (GitHub Actions)
+        - Other (please specify in additional context)
+    validations:
+      required: true
+
+  - type: input
+    id: action-version
+    attributes:
+      label: Action Version
+      description: What version of the action are you using?
+      placeholder: "v1.2.3 or @main"
+    validations:
+      required: true
+
+  - type: input
+    id: runner-version
+    attributes:
+      label: GitHub Runner Version
+      description: What version of the GitHub runner are you using?
+      placeholder: "ubuntu-latest, windows-latest, etc."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: languages
+    attributes:
+      label: Languages Being Scanned
+      description: What programming languages is the action scanning?
+      multiple: true
+      options:
+        - TypeScript
+        - JavaScript
+        - Python
+        - Java
+        - C#
+        - Go
+        - PHP
+        - Other
+    validations:
+      required: false
+
+  - type: input
+    id: repository-size
+    attributes:
+      label: Approximate Repository Size
+      description: Roughly how large is your repository?
+      placeholder: "e.g., 10k lines, 100k files, etc."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Issue Frequency
+      description: How often does this issue occur?
+      options:
+        - Always
+        - Often
+        - Sometimes
+        - Rarely
+        - Only once
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or Files
+      description: If applicable, add screenshots or attach files to help explain your problem
+      placeholder: "Drag and drop screenshots or files here"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: "Any other relevant information"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Before submitting, please confirm:
+      options:
+        - label: I have searched existing issues to make sure this isn't a duplicate
+          required: true
+        - label: I have removed any sensitive information (API tokens, secrets, etc.) from logs and configuration
+          required: true
+        - label: I have provided enough information to reproduce the issue
+          required: true
+        - label: I am using the latest version of the action (or have noted the specific version above)
+          required: false

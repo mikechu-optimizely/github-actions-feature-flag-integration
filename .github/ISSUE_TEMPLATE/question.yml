@@ -1,0 +1,143 @@
+name: ❓ Question
+description: Ask a question or get help with usage
+title: '[Question]: '
+labels: ['question', 'help wanted']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about using the Optimizely Feature Flag Sync Action? We're here to help!
+        
+        **Note**: For bug reports, please use the Bug Report template instead.
+
+  - type: input
+    id: question-summary
+    attributes:
+      label: Question Summary
+      description: A brief summary of your question
+      placeholder: "What would you like help with?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: detailed-question
+    attributes:
+      label: Detailed Question
+      description: Provide more details about what you're trying to accomplish
+      placeholder: |
+        Please describe:
+        - What you're trying to achieve
+        - What you've already tried
+        - Where you're getting stuck
+        - Any specific requirements or constraints
+    validations:
+      required: true
+
+  - type: dropdown
+    id: question-category
+    attributes:
+      label: Question Category
+      description: What area does your question relate to?
+      options:
+        - Getting Started / Setup
+        - Configuration and Options
+        - Language Support
+        - Performance and Optimization
+        - Security and Permissions
+        - Workflow Integration
+        - Troubleshooting
+        - Best Practices
+        - Enterprise Usage
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-configuration
+    attributes:
+      label: Current Configuration
+      description: Share your current workflow configuration (remove any secrets)
+      render: yaml
+      placeholder: |
+        name: Feature Flag Sync
+        on: [push]
+        jobs:
+          sync:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v4
+              - uses: optimizely/feature-flag-sync-action@v1
+                with:
+                  # your current configuration
+    validations:
+      required: false
+
+  - type: textarea
+    id: repository-context
+    attributes:
+      label: Repository Context
+      description: Tell us about your repository and setup
+      placeholder: |
+        Help us understand your context:
+        - What programming languages do you use?
+        - How large is your repository?
+        - What's your team size/organization type?
+        - Any special requirements or constraints?
+    validations:
+      required: false
+
+  - type: textarea
+    id: what-tried
+    attributes:
+      label: What Have You Tried?
+      description: What solutions or approaches have you already attempted?
+      placeholder: |
+        Let us know what you've already tried:
+        - Documentation you've consulted
+        - Configuration changes you've made
+        - Other approaches you've attempted
+        - Any error messages or unexpected behavior
+    validations:
+      required: false
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is this question?
+      options:
+        - Low - General curiosity or future planning
+        - Medium - Working on implementation, not blocked
+        - High - Blocked on current work
+        - Critical - Production issue or urgent deadline
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: Expected Outcome
+      description: What outcome are you hoping for?
+      placeholder: |
+        What would a successful resolution look like?
+        - Specific behavior you want to achieve
+        - Problems you want to solve
+        - Goals you want to accomplish
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Before submitting, please confirm:
+      options:
+        - label: I have searched existing issues and discussions for similar questions
+          required: true
+        - label: I have consulted the documentation (README, docs folder, examples)
+          required: true
+        - label: I have removed any sensitive information from my question
+          required: true
+        - label: This is a question, not a bug report or feature request
+          required: true

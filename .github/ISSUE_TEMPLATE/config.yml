@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/optimizely/feature-flag-sync-action#readme
+    about: Check the comprehensive documentation before opening an issue
+  - name: 💬 GitHub Discussions
+    url: https://github.com/optimizely/feature-flag-sync-action/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🚀 Workflow Examples
+    url: https://github.com/optimizely/feature-flag-sync-action/tree/main/docs/examples
+    about: Browse workflow examples for different use cases
+  - name: 🔧 Configuration Reference  
+    url: https://github.com/optimizely/feature-flag-sync-action/blob/main/docs/configuration.md
+    about: Complete configuration options and examples
+  - name: 🏢 Enterprise Support
+    url: https://support.optimizely.com
+    about: Get enterprise support through official Optimizely channels (for enterprise customers)

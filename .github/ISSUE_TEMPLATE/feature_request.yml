@@ -1,0 +1,199 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement
+title: '[Feature]: '
+labels: ['enhancement', 'triage']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please provide as much detail as possible to help us understand your needs.
+
+  - type: input
+    id: feature-title
+    attributes:
+      label: Feature Title
+      description: A clear, concise title for the feature request
+      placeholder: "Brief title of the proposed feature"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: Problem Description
+      description: What problem does this feature solve? What pain point does it address?
+      placeholder: |
+        Describe the problem you're trying to solve:
+        - Is there something the action currently can't do?
+        - Is there a workflow that's difficult or impossible?
+        - Is there a common use case that's not supported?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution in detail
+      placeholder: |
+        How would you like this feature to work?
+        - What would the user interface look like?
+        - How would it be configured?
+        - What would the workflow syntax be?
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Describe specific use cases where this feature would be valuable
+      placeholder: |
+        Examples of when this feature would be used:
+        1. When working with [specific scenario]
+        2. In organizations that [specific context]
+        3. For repositories that [specific characteristics]
+    validations:
+      required: true
+
+  - type: textarea
+    id: example-configuration
+    attributes:
+      label: Example Configuration
+      description: Show how this feature would be configured (if applicable)
+      render: yaml
+      placeholder: |
+        # Example workflow configuration using the proposed feature
+        - name: Feature Flag Sync with New Feature
+          uses: optimizely/feature-flag-sync-action@v1
+          with:
+            new-feature-option: 'example-value'
+            # other configuration...
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternative-solutions
+    attributes:
+      label: Alternative Solutions Considered
+      description: What other approaches have you considered?
+      placeholder: |
+        Describe alternative solutions you've thought about:
+        - Other ways to solve the same problem
+        - Existing tools or workarounds you've tried
+        - Why those alternatives don't meet your needs
+    validations:
+      required: false
+
+  - type: dropdown
+    id: feature-scope
+    attributes:
+      label: Feature Scope
+      description: What's the scope of this feature?
+      options:
+        - New configuration option
+        - New operation mode
+        - Enhanced reporting
+        - New language support
+        - Performance improvement
+        - Integration with external tool
+        - Major workflow enhancement
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Critical - Blocking current workflows
+        - High - Would significantly improve workflows
+        - Medium - Would be nice to have
+        - Low - Minor enhancement
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: How complex do you think this feature would be to implement?
+      options:
+        - Simple - Small configuration change
+        - Medium - New functionality within existing patterns
+        - Complex - Significant new capability
+        - Major - Would require architectural changes
+        - Unknown
+    validations:
+      required: false
+
+  - type: textarea
+    id: target-users
+    attributes:
+      label: Target Users
+      description: Who would benefit from this feature?
+      placeholder: |
+        Who is the target audience for this feature?
+        - Small teams vs. enterprise organizations
+        - Specific types of projects (monorepos, microservices, etc.)
+        - Users with specific workflows or constraints
+    validations:
+      required: false
+
+  - type: textarea
+    id: backward-compatibility
+    attributes:
+      label: Backward Compatibility
+      description: Would this feature impact existing users?
+      placeholder: |
+        Consider backward compatibility:
+        - Would this change existing behavior?
+        - Would existing configurations still work?
+        - Would this require migration steps?
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, or examples
+      placeholder: |
+        Any additional information that would be helpful:
+        - Links to related tools or features
+        - Screenshots or mockups
+        - References to similar features in other tools
+        - Real-world examples of the problem
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Are you willing to help implement this feature?
+      options:
+        - label: I would be interested in implementing this feature myself
+          required: false
+        - label: I would be available to test and provide feedback during development
+          required: false
+        - label: I can provide additional requirements and use cases as needed
+          required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Before submitting, please confirm:
+      options:
+        - label: I have searched existing issues to make sure this isn't a duplicate
+          required: true
+        - label: I have provided a clear description of the problem and proposed solution
+          required: true
+        - label: I have considered alternative solutions and explained why they don't meet the need
+          required: true
+        - label: I understand this is a feature request and not a bug report
+          required: true
